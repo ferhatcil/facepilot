@@ -323,6 +323,40 @@ class AddonTests(unittest.TestCase):
         self.assertEqual(bpy.ops.kmtr.hole_ignore(action='IGNORE',index=999),{'CANCELLED'})
         self.assertIs(self.addon._runtime['repair_preview'],plan)
 
+    def test_language_switch_preserves_pending_patch_and_original_data(self):
+        self.assertTrue(hasattr(self.addon,'_t'),'UI language support is missing')
+        self.make_curved_hex_hole();bpy.ops.kmtr.repair_preview(action='BUILD',scope='ALL')
+        plan=self.addon._runtime['repair_preview'];before=self.fingerprint();selected=self.selected()
+        s=bpy.context.window_manager.kmtr_settings
+        try:
+            s.language='EN'
+            self.assertEqual(self.addon._t('Bu açıklığı yoksay'),'Ignore this opening')
+            self.addon._patch_tick()
+            self.assertIs(self.addon._runtime['repair_preview'],plan)
+            self.assertEqual(self.fingerprint(),before);self.assertEqual(self.selected(),selected)
+            s.language='TR'
+            self.assertEqual(self.addon._t('Bu açıklığı yoksay'),'Bu açıklığı yoksay')
+        finally:s.language='TR'
+
+    def test_language_switch_preserves_isolation_and_enum_identifiers(self):
+        self.assertTrue(hasattr(self.addon,'_t'),'UI language support is missing')
+        self.select({1});bpy.ops.kmtr.isolate(action='HIDE')
+        before=self.fingerprint();hidden=tuple(f.hide for f in self.bm.faces)
+        s=bpy.context.window_manager.kmtr_settings
+        try:
+            s.language='EN'
+            items=self.addon._move_target_items(s,bpy.context)
+            self.assertEqual(items[0][0],'MAIN');self.assertEqual(items[0][1],'Main material (slot 1)')
+            self.assertEqual(items[1][1],self.obj.material_slots[1].name)
+            self.assertEqual(s.smart_mode,'AUTO')
+            smart=self.addon._smart_mode_items(s,bpy.context)
+            self.assertEqual([x[0] for x in smart],['AUTO','MATERIAL','SURFACE'])
+            self.assertEqual(smart[0][1],'Automatic')
+            self.assertEqual(tuple(f.hide for f in self.bm.faces),hidden)
+            self.assertEqual(self.fingerprint(),before)
+            self.assertTrue(self.addon._isolation_layers(self.bm))
+        finally:s.language='TR'
+
     def test_empty_mesh_hole_scan_and_overlay_tick_are_safe(self):
         bmesh.ops.delete(self.bm, geom=list(self.bm.verts), context='VERTS')
         bmesh.update_edit_mesh(self.obj.data)

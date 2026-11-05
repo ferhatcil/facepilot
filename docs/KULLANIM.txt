@@ -1,4 +1,17 @@
-KOLAY MALZEME TR — 1.8.0
+KOLAY MALZEME TR / FACEPILOT — 1.9.0
+
+YENİ: DÜZENLİ PANEL VE TÜRKÇE / ENGLISH SEÇENEĞİ
+Panel artık N > FacePilot sekmesindedir. Üstteki Türkçe / English
+düğmeleri yalnız eklentinin dilini değiştirir; malzeme/obje adları ve
+Blender'ın genel dili korunur. Tercih eklenti ayarlarında tutulur;
+otomatik tercih kaydı kapalıysa Save Preferences kullanın.
+
+Üstte seçili/gizli yüz sayısı ve Yalıt / Geri göster kısayolları bulunur.
+Seçim, Akıllı seçim, Görsel önizleme, Kırmızı düzeltme, Malzeme atama,
+Açıklıklar ve onarım, Gelişmiş onarım bölümleri ayrı açılıp kapanır.
+Sıkı küçük delik ve nokta birleştirme araçları Gelişmiş onarım içindedir.
+Eski sürümlerin aşağıdaki uzun düğme adları yeni panelde kısaltılmış
+olabilir; güncel TR/EN README ve bölüm başlıklarını izleyin.
 
 YENİ: ÖNEMSİZ AÇIKLIKLARI YOKSAYMA
 Listeden açıklığı seçip “Bu açıklığı yoksay”a veya satırdaki × işaretine

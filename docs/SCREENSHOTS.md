@@ -1,8 +1,8 @@
 # Screenshot notes / Ekran görüntüsü notları
 
-The documentation uses real Blender screenshots of a temporary mesh copy exported from the user's active character. Screenshots were captured in a **separate Blender 5.2.3 GUI process** with a neutral Solid view and the respective v1.6/v1.7 source. The material-color examples use deterministic palette seed 28. The original scene was neither opened in that process nor saved or repaired.
+The documentation uses real Blender screenshots of a temporary mesh copy exported from the user's active character. Screenshots were captured in a **separate Blender 5.2.3 GUI process** with a neutral Solid view and the respective add-on version. The material-color examples use deterministic palette seed 28. The original scene was neither opened in that process nor saved or repaired.
 
-Belgelerde, kullanıcının etkin karakterinden alınan geçici mesh kopyasının gerçek Blender ekran görüntüleri kullanılır. Çekimler **ayrı Blender 5.2.3 GUI oturumunda**, nötr Solid görünüm ve ilgili v1.6/v1.7 kaynakla yapıldı. Malzeme rengi örneklerinde palet tohumu 28 kullanıldı. Asıl sahne o oturumda açılmadı, kaydedilmedi veya onarılmadı.
+Belgelerde, kullanıcının etkin karakterinden alınan geçici mesh kopyasının gerçek Blender ekran görüntüleri kullanılır. Çekimler **ayrı Blender 5.2.3 GUI oturumunda**, nötr Solid görünüm ve ilgili eklenti sürümüyle yapıldı. Malzeme rengi örneklerinde palet tohumu 28 kullanıldı. Asıl sahne o oturumda açılmadı, kaydedilmedi veya onarılmadı.
 
 | Image | Demonstration / Gösterim |
 |---|---|
@@ -23,6 +23,9 @@ Belgelerde, kullanıcının etkin karakterinden alınan geçici mesh kopyasını
 | `18-polygon-opening-preview.png` | Six violet proposed triangles; still 27,696 faces / Altı mor üçgen önerisi; hâlâ 27.696 gerçek yüz |
 | `19-polygon-opening-applied.png` | Explicit Apply on disposable copy: 27,702 faces / Yalnız geçici kopyada Uygula: 27.702 yüz |
 | `20-ignore-openings.png` | v1.8: one opening ignored, 146 → 145 visible entries; restore returned to 146 on the copy / Kopyada bir açıklık elendi, 146 → 145; geri getir ile tekrar 146 |
+| `21-interface-tr.png` | v1.9 compact Turkish sidebar / Yeni Türkçe açılır kapanır panel |
+| `22-interface-en.png` | Same scene and selection after switching to English / Aynı sahne ve seçimde İngilizce arayüz |
+| `23-openings-panel-en.png` | English scan list, ignore action and preview controls / İngilizce tarama, yoksayma ve önizleme araçları |
 
 For cleaner screenshots, floor/axis/relationship lines and seam display were disabled and the camera was adjusted in the disposable session. The red-mark fill remained 0. Material assignments temporarily changed for the transfer example were restored before later examples. The sidebar was scrolled and unrelated panels collapsed/omitted when isolating a tool group; the shipped controls and their draw code were unchanged.
 

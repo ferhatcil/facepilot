@@ -1,5 +1,15 @@
 # Changelog / Sürüm geçmişi
 
+## 1.9.0 · Compact interface & language choice
+
+- One FacePilot sidebar with native collapsible workflow groups and stable group IDs.
+- Language switch, selection/hidden counts and isolate/restore shortcuts pinned at the top.
+- Independent Turkish/English UI, dynamic enum labels, operator help, reports and modal hints.
+- Add-on preference synchronization without changing Blender's global language or user datablock names.
+- 61 Blender tests: 60 passed, 1 GUI-only skipped. Real TR/EN screenshots and updated guides.
+
+Düzenli, açılır kapanır FacePilot paneli; üstte dil seçimi ve görünürlük kısayolları. Türkçe/İngilizce arayüz, menüler ve işlem mesajları. Dil değişiminde model, izolasyon, seçim ve bekleyen yama korunur.
+
 ## 1.8.0 · Ignore unimportant openings
 
 - Per-row × and active-row Ignore; restore all ignored openings for the current mesh.

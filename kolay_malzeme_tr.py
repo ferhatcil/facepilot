@@ -1,9 +1,9 @@
 bl_info = {
     'name': 'Kolay Malzeme TR',
     'author': 'Codex',
-    'version': (1, 8, 0),
+    'version': (1, 9, 0),
     'blender': (4, 2, 0),
-    'location': '3B Görünüm > N > Kolay Malzeme',
+    'location': '3D View > N > FacePilot',
     'description': 'Türkçe yüz seçimi, malzeme atama ve dışa aktarılmayan karartma önizlemesi',
     'category': 'Mesh',
 }
@@ -13,6 +13,7 @@ import bmesh
 import math
 import random
 import colorsys
+import re
 from bpy.app.handlers import persistent
 from bpy.props import BoolProperty, CollectionProperty, EnumProperty, FloatProperty, FloatVectorProperty, IntProperty, PointerProperty, StringProperty
 
@@ -45,6 +46,240 @@ PREVIEW_ITEMS = [
     ('MATERIAL', 'Bu malzemeyi karart', 'Etkin malzemenin yüzlerini karart'),
     ('OTHER_MATERIALS', 'Diğer malzemeleri karart', 'Yalnız etkin malzemeyi normal görünümde bırak'),
 ]
+
+
+UI_EN = {
+    'Seçim':'Selection', 'Akıllı seçim':'Smart selection', 'Görsel önizleme':'Visual preview',
+    'Kırmızı düzeltme':'Red corrections', 'Malzeme atama':'Material assignment',
+    'Açıklıklar ve onarım':'Openings & repair', 'Gelişmiş onarım':'Advanced repair',
+    'Geçici görünüm':'Viewport only', 'Gerçek atama':'Changes material assignments',
+    'Seçimi yalıt':'Isolate selection', 'Gizlemeyi geri al':'Restore visibility',
+    'Tüm gizlileri göster':'Reveal all hidden faces', 'Normal görünüme dön':'Reset visual previews',
+    'Malzemeden yüz seç':'Select faces by material', 'Seç':'Select', '+ Ekle':'Add',
+    'Seçimden çıkar':'Deselect', 'Temizle':'Clear selection', 'Büyüt':'Grow', 'Küçült':'Shrink',
+    'Ters çevir':'Invert', 'Seçimi sakla':'Store selection', 'Geri çağır':'Recall selection',
+    'Fırça +':'Brush +', 'Fırça −':'Brush −', 'Kutu seçimine dön':'Box select tool',
+    'Fırça boyutu':'Brush radius', 'Yöntem':'Method', 'Açı sınırı':'Angle limit',
+    'Otomatik':'Automatic', 'Aynı malzeme':'Same material', 'Yüzey sınırları':'Surface boundaries',
+    'Akıllı seçim: bölgeye tıkla':'Pick a region', 'Shift: ekle · Ctrl: çıkar':'Shift: add · Ctrl: subtract',
+    'Hepsine farklı rastgele renk':'Randomize all material colors',
+    'Tüm malzemelere farklı rastgele renkler':'Random colors for all materials',
+    'Önizleme rengi':'Preview color', 'Renk yoğunluğu':'Color opacity',
+    'Bu malzemeyi önizlemede boya':'Apply preview color', 'Bu malzemenin rengini kaldır':'Clear active material color',
+    'Tüm önizleme renklerini temizle':'Clear all preview colors', 'Yalnız görünüm rengi':'Viewport color',
+    'Seçileni karart':'Darken selected', 'Diğer yüzleri karart':'Darken unselected',
+    'Bu malzemeyi karart':'Darken active material', 'Diğer malzemeleri karart':'Darken other materials',
+    'Karartma':'Dark opacity', 'Kapalı':'Off', 'Geçici siyah önizleme':'Temporary dark preview',
+    'Renkler ve işaretler dışa aktarılmaz.':'Colors and marks are not exported.',
+    'Seçilileri kırmızı işaretle':'Mark selected faces', 'Seçilileri kırmızıdan çıkar':'Unmark selected faces',
+    'İç dolgu':'Fill opacity', 'Ctrl ile kırmızı işaretle':'Ctrl red marking',
+    'Ctrl + sol tık: işaretle / kaldır':'Ctrl + left click: toggle mark',
+    'Ctrl + Shift + sol tık: işareti sil':'Ctrl + Shift + left click: erase',
+    'Clear — tüm kırmızıları iptal et':'Clear all red marks',
+    'Kırmızıları 1. ana malzemeye taşı':'Move marked faces to slot 1',
+    'Malzemeden yüz çıkar / taşı':'Move faces out of material', 'Hedef':'Target',
+    'Seçili yüzleri malzemeden çıkar':'Move selected source faces',
+    'Seçime listedeki malzemeyi ata':'Assign active material', 'Ad':'Name',
+    'Oluştur ve seçime ata':'Create and assign', 'Yeni malzeme':'New material',
+    'Ana malzeme (1. yuva)':'Main material (slot 1)',
+    'Yüzleri mesh’in ilk malzeme yuvasına taşı':'Move faces to the first material slot',
+    '(boş yuva)':'(empty slot)', '(seçilmedi)':'(none)', '(boş)':'(empty)', '(malzeme yok)':'(no material)',
+    'Eksik yüz / açıklık tara':'Scan openings', 'Yalnız listedeki malzemeyi tara':'Active material only',
+    'Bu açıklığı yoksay':'Ignore this opening', 'Açıklığı yoksay':'Ignore opening',
+    'Yoksayılanları geri getir':'Restore ignored openings',
+    'Listedeki açıklığı seç ve yaklaş':'Focus listed opening', 'Açıklığı seç ve yaklaş':'Focus opening',
+    'Açıklıkları turkuaz çizgilerle göster':'Show cyan boundaries',
+    'Önizlemeli onarım':'Preview repair', 'Önizlemeli onarım (önerilen)':'Preview repair (recommended)',
+    'Önizleme açıklık sınırı':'Preview size limit', 'Yama saydamlığı':'Patch opacity',
+    'Listedeki açıklığı önizle':'Preview listed opening', 'Tüm uygun açıklıkları önizle':'Preview all eligible openings',
+    'Uygula':'Apply', 'İptal':'Cancel', 'Yama önizlemesi':'Repair preview',
+    'Henüz geometri değiştirilmedi.':'No geometry changed yet.',
+    'Uygula gerçek yüz ekler. Ctrl+Z: geri al.':'Apply adds real faces. Ctrl+Z: undo.',
+    'Her açıklık eksik yüz olmayabilir.':'Some openings may be intentional.',
+    'Sıkı küçük delik modu':'Strict small-hole mode', 'En büyük açıklık':'Maximum opening size',
+    'Onarılabilirleri kontrol et':'Check eligibility', 'Uygun küçük delikleri kapat':'Fill eligible small holes',
+    'Yalnız listedeki açıklığı onar':'Repair listed opening',
+    'Yalnız uygun 3–4 kenarlı açıklıklar.':'Eligible 3–4-edge loops only.',
+    'Seçili noktaları birleştir':'Merge selected vertices',
+    'Seçili noktaları mesafeyle birleştir':'Merge selected by distance',
+    'Birleştirme mesafesi':'Merge distance', 'Yalnız bağlı geometri':'Connected only',
+    'Gerçek geometri değişir. Ctrl+Z: geri al.':'Changes geometry. Ctrl+Z: undo.',
+    'Kapalı halka':'Closed loop', 'Dallanan sınır':'Branched boundary', 'Sınır zinciri':'Boundary chain',
+    'Geometri değişti; tekrar tarayın.':'Geometry changed; scan again.',
+    'Tek bir mesh ile Düzenleme Modu’na geçin.':'Enter Edit Mode on one mesh.',
+    'Tek bir mesh ile Düzenleme Modu’na geçin':'Enter Edit Mode on one mesh',
+    'Tek bir mesh seçip Düzenleme Modu’na (Tab) geçin':'Select one mesh and enter Edit Mode (Tab)',
+    'Model değişti; yeniden önizleyin.':'Model changed; rebuild the preview.',
+    'Model veya boyut sınırı değişti; yeniden önizleyin.':'Model or size limit changed; rebuild the preview.',
+    'Önce açıklıkları yeniden tarayın':'Scan the openings again first',
+    'Önce açıklıkları tekrar tarayın':'Scan the openings again first',
+    'Bu sınır için yama önerilemedi; nedenleri panelde':'No patch could be proposed; see the skip reasons',
+    'Önce bir yama önizlemesi oluşturun':'Build a repair preview first',
+    'Geçerli bir açıklık seçin veya yeniden tarayın':'Select a valid opening or scan again',
+    'Açıklık yoksayıldı; geometri değişmedi':'Opening ignored; geometry unchanged',
+    'Bu mesh için yoksayılan açıklıklar geri getirildi':'Ignored openings restored for this mesh',
+    'Tarama yok veya geometri değişti; önce tekrar tarayın':'No valid scan; scan again',
+    'Bu sınır gizli. Önce yüzleri görünür yapıp tekrar deneyin':'This boundary is hidden; reveal it first',
+    'Bu sınırlar için uygun küçük delik yok; atlama nedenleri panelde':'No eligible small hole; see the skip reasons',
+    'Önce birleştirilecek en az iki noktayı seçin':'Select at least two vertices to merge',
+    'Sıfır ölçekli nesnede birleştirme yapılamaz':'Cannot merge an object with zero scale',
+    'Önce listeden bir malzeme seçin':'Select a material from the list first',
+    'Bu mesh üzerinde malzeme yok':'This mesh has no materials',
+    'Geçerli bir hedef malzeme seçin':'Choose a valid target material',
+    'Kaynak ve hedef malzeme yuvalarını kontrol edin':'Check source and target material slots',
+    'Kaynak ve hedef aynı. Farklı bir hedef malzeme seçin':'Source and target match; choose another target',
+    'Seçimde kaynak malzemeye ait yüz yok; kaynak malzemeyi listeden seçin':'No selected source faces; choose the source material',
+    'Akıllı seçim düğmesine basıp modelde bir yüz tıklayın':'Start smart selection and click a mesh face',
+    'Modelde görünür bir yüz tıklayın; Esc ile iptal edebilirsiniz':'Click a visible face; Esc cancels',
+    'Önce seçim aracıyla yüzleri seçin':'Select faces with a selection tool first',
+    'Önce Ctrl+sol tık ile turuncu yüzleri kırmızı işaretleyin':'Mark selected faces red first',
+    'İşaretlemeden sonra malzeme ataması değişti; işaretleri temizleyip yeniden işaretleyin':'Material assignments changed; clear and rebuild the marks',
+    'Kırmızı yüzlerden bazıları gizli. Önce görünür yapın veya işaretleri temizleyin':'Some marked faces are hidden; reveal them or clear the marks',
+    'Bu mesh için saklanmış seçim yok':'No stored selection for this mesh',
+    'Topoloji değişti; yanlış yüz seçmemek için geri çağırma iptal edildi':'Topology changed; stored selection was not restored',
+    'Önce önceki gizlemeyi geri alın':'Restore the previous isolation first',
+    'Önce en az bir yüz seçin':'Select at least one face first',
+    'Gizlenecek başka görünür yüz yok':'No other visible faces to hide',
+    'Geri alınacak gizleme yok':'No isolation to restore',
+    'Topoloji değişti. Gerekirse “Tüm gizlileri göster” düğmesini kullanın':'Topology changed; use Reveal all hidden faces if needed',
+    'Bir malzeme ve en az bir yüz seçin':'Select a material and at least one face',
+    'En az bir yüz seçin ve malzeme adı yazın':'Select at least one face and enter a material name',
+    'Üçgen/dörtgen kapalı halka değil':'Not a closed triangle/quad loop',
+    'Gizli geometri':'Hidden geometry', 'Birden fazla komşu malzeme':'Mixed adjacent materials',
+    'Yakında çok-yüzlü kenar':'Nearby non-manifold edge', 'Bu sınırda zaten yüz var':'A face already fills this boundary',
+    'Sınır sıralanamıyor':'Cannot order the boundary', 'Boyut sınırından büyük':'Over size limit',
+    'Sıfır boyutlu açıklık':'Zero-size opening', 'Dejenere sınır':'Degenerate boundary',
+    'Fazla eğri / düzlemsel değil':'Too warped / nonplanar', 'İçbükey veya dejenere sınır':'Concave or degenerate boundary',
+    'Komşu yüz yönleri tutarsız':'Inconsistent adjacent face winding',
+    'Mevcut yüzeyle çakışma':'Existing-surface overlap',
+    'Kapalı, en fazla 256 kenarlı halka gerekli':'Requires a closed loop with 3–256 edges',
+    'Sınır artık açık değil':'Boundary is no longer open',
+    'Önizleme boyut sınırından büyük':'Over preview size limit',
+    'Çakışık noktalar / dejenere sınır':'Coincident vertices / degenerate boundary',
+    'Tek bir yama oluşturulamadı':'Could not create one patch',
+    'Üçgenleme sınırı / komşu yüz yönleri tutarsız':'Invalid triangulation boundary / winding',
+    'Sıfır alanlı üçgen':'Zero-area triangle',
+    'Önerilen yamalar birbiriyle çakışıyor':'Proposed patches overlap',
+    'Seçili':'Selected', 'Gizli':'Hidden', 'Malzeme':'Material', 'Kaynak':'Source',
+    'Ekle':'Add', 'Çıkar':'Subtract', 'kenar':'edges', 'Uygun':'Eligible', 'Eklenen yüz':'Faces added',
+    'Bölgeye tıkla':'Pick region', 'Rastgele renkler':'Random colors for all',
+    'Bu malzemeye renk ver':'Color active material', 'Rengi kaldır':'Clear active color',
+    'Renkleri temizle':'Clear all colors', 'Karartma modu':'Dark mode',
+    'İşaretlileri 1. yuvaya taşı':'Move marked to slot 1',
+    'Gerçek atama · Ctrl+Z: geri al':'Changes assignments · Ctrl+Z: undo',
+    'Seç ve yaklaş':'Focus opening', 'Yoksay':'Ignore', 'Atlama nedenleri':'Skip reasons',
+    'Yalıt':'Isolate','Geri göster':'Restore', 'Diğerlerini gizle':'Hide unselected',
+    'Listedeki açıklık':'Listed opening','Taramadaki uygun açıklıklar':'Eligible scanned openings',
+    'Önizle':'Preview','Önizlemeyi uygula':'Apply preview','Önizlemeyi iptal et':'Cancel preview',
+    'Bu malzemenin önizleme rengini kaldır':'Clear active material preview',
+    'Temizle':'Clear', 'Kırmızı yüzler':'Red marks','Seçimi düzenle':'Refine selection',
+    'Yüz seçim fırçası':'Face selection brush','Seçim hafızası':'Selection memory',
+    'Yüzleri yalıt':'Isolate faces', 'Seçime malzemeyi ata':'Assign material to selection',
+    'Akıllı seçim: modele sol tıkla · Shift: ekle · Ctrl: çıkar · Esc: iptal':
+        'Smart selection: click mesh · Shift: add · Ctrl: subtract · Esc: cancel',
+    'Kırmızı işaret silme · sol tuşu bırak: bitir · Esc: bu çizgiyi iptal et':
+        'Erase marks · release left mouse: finish · Esc: cancel stroke',
+    'Kırmızı işaret ekleme · sol tuşu bırak: bitir · Esc: bu çizgiyi iptal et':
+        'Add marks · release left mouse: finish · Esc: cancel stroke',
+    'Atanmış malzemeyi ayrı parçalarıyla seç; ana malzemede yüzey sınırına geç':
+        'Use the assigned material including disconnected pieces; use surface boundaries on slot 1',
+    'Tıklanan yüzün malzemesine ait tüm görünür yüzleri seç':
+        'Select all visible faces sharing the clicked material',
+    'Açı, malzeme, dikiş ve keskinlik sınırlarına göre bağlı yüzeyi seç':
+        'Follow connected faces within angle, material, seam and sharp-edge boundaries',
+    'Normal görünüme dön':'Reset color previews',
+}
+
+OP_HELP_EN={
+    'kmtr.hole_scan':'List connected open boundary edges. Intentional openings can appear; no geometry or UV changes.',
+    'kmtr.hole_ignore':'Exclude an opening from the list, cyan overlay and repairs. Restore ignored openings brings it back.',
+    'kmtr.hole_focus':'Select the listed boundary edges and frame them without adding faces.',
+    'kmtr.repair_preview':'Preview proposed triangles in violet. Only Apply changes geometry; Ctrl+Z undoes the repair.',
+    'kmtr.hole_repair':'Fill eligible small planar triangle/quad holes. Real geometry changes; Ctrl+Z undoes them.',
+    'kmtr.merge_selected':'Weld only nearby selected visible vertices. Real geometry changes; Ctrl+Z undoes them.',
+    'kmtr.material_select':'Select, add or subtract the visible faces assigned to the active material.',
+    'kmtr.material_color':'Temporary viewport color only. Shaders, UVs, assignments and exported data stay unchanged.',
+    'kmtr.remove_from_material':'Move selected visible source faces to the chosen material. Ctrl+Z undoes assignment.',
+    'kmtr.smart_select':'Click a face to select its region. Shift adds, Ctrl subtracts. Uses materials or surface boundaries.',
+    'kmtr.red_action':'Mark/unmark selected faces, clear marks or transfer marked faces to material slot 1.',
+    'kmtr.red_paint':'Ctrl+left click toggles red marks; a drag follows its starting face. Ctrl+Shift always erases.',
+    'kmtr.selection_action':'Clear, invert, grow or shrink the visible face selection.',
+    'kmtr.brush':'Use native circle selection in add/subtract mode. X-Ray may also select faces behind the surface.',
+    'kmtr.selection_memory':'Store or recall a session selection. Topology changes invalidate stored face indices.',
+    'kmtr.isolate':'Hide unselected faces or restore previous visibility while preserving previously hidden faces.',
+    'kmtr.preview':'Draw a temporary dark viewport mask. No material, texture, UV or export changes.',
+    'kmtr.assign_material':'Assign the active material to selected visible faces. Changes real exported assignments.',
+    'kmtr.new_material':'Create and assign a material, reusing an existing material with the entered name.',
+}
+
+_MESSAGE_EN = [
+    (r'Olası delik (\d+)', 'Opening {}'), (r'Açık sınır (\d+)', 'Open boundary {}'),
+    (r'(\d+) kenar', '{} edges'), (r'(\d+) sınır kenarı gizli','{} boundary edges hidden'),
+    (r'Malzeme: (.*)', 'Material: {}'), (r'Kaynak: (.*)', 'Source: {}'),
+    (r'(\d+) olası açıklık bulundu; otomatik onarım yapılmadı','{} openings found; no repair applied'),
+    (r'(\d+) olası açıklık bulundu','{} candidate openings'),
+    (r'(\d+) açıklık yoksayıldı','{} openings ignored'),
+    (r'(\d+) yama · (\d+) önerilen üçgen','{} patches · {} proposed triangles'),
+    (r'(\d+) yama / (\d+) üçgen yalnız önizlemede; henüz yüz eklenmedi','{} patches / {} triangles in preview; no faces added'),
+    (r'(\d+) önizlenen üçgen eklendi. Yeni UV’leri kontrol edin. Ctrl\+Z: geri al','{} previewed triangles added. Check new UVs. Ctrl+Z: undo'),
+    (r'(\d+) uygun küçük açıklık; (\d+) atlanacak','{} eligible small openings; {} skipped'),
+    (r'(\d+) yeni yüz eklendi; (\d+) sınır atlandı. Yeni yüzlerin UV’lerini kontrol edin. Ctrl\+Z: geri al','{} faces added; {} boundaries skipped. Check new UVs. Ctrl+Z: undo'),
+    (r'(\d+) nokta birleştirildi. Ctrl\+Z: geri al','{} vertices merged. Ctrl+Z: undo'),
+    (r'(\d+) yüze (.*) atandı','{} faces assigned to {}'),
+    (r'(\d+) yüz (.*) hedefine taşındı','{} faces moved to {}'),
+    (r'(\d+) yüz: malzeme grubu','{} faces: material group'),
+    (r'(\d+) yüz: yüzey bölgesi','{} faces: surface region'),
+    (r'(\d+) kırmızı yüz 1. ana malzemeye taşındı','{} marked faces moved to slot 1'),
+    (r'(\d+) yüz hafızaya alındı','{} faces stored'),
+    (r'(\d+) kırmızı yüz · renk geçicidir','{} marked faces · temporary color'),
+    (r'(\d+) yüz seçili','{} faces selected'),
+    (r'Yama uygulanamadı: (.*)','Could not apply patch: {}'),
+    (r'Yama önizlemesi çizilemedi: (.*)','Could not draw patch preview: {}'),
+    (r'Önizleme çizilemedi: (.*)','Could not draw preview: {}'),
+]
+
+
+def _language(context=None):
+    context=context or bpy.context
+    settings=getattr(getattr(context,'window_manager',None),'kmtr_settings',None)
+    return getattr(settings,'language','TR')
+
+
+def _t(text,context=None):
+    if _language(context)!='EN':return text
+    if text in UI_EN:return UI_EN[text]
+    for pattern,translation in _MESSAGE_EN:
+        match=re.fullmatch(pattern,text)
+        if match:return translation.format(*match.groups())
+    return text
+
+
+def _localized_items(items):
+    cache={}
+    def callback(self,context):
+        lang=_language(context)
+        if lang not in cache:
+            cache[lang]=[(item[0],_t(item[1],context),_t(item[2],context),*item[3:]) for item in items]
+        return cache[lang]
+    return callback
+
+
+_smart_mode_items=_localized_items([
+    ('AUTO','Otomatik','Atanmış malzemeyi ayrı parçalarıyla seç; ana malzemede yüzey sınırına geç'),
+    ('MATERIAL','Aynı malzeme','Tıklanan yüzün malzemesine ait tüm görünür yüzleri seç'),
+    ('SURFACE','Yüzey sınırları','Açı, malzeme, dikiş ve keskinlik sınırlarına göre bağlı yüzeyi seç')])
+
+
+def _language_changed(settings,context):
+    addon=context.preferences.addons.get(__name__) if context else None
+    if addon and addon.preferences.language!=settings.language:addon.preferences.language=settings.language
+    _redraw()
+
+
+def _preference_language_changed(prefs,context):
+    settings=getattr(context.window_manager,'kmtr_settings',None) if context else None
+    if settings and settings.language!=prefs.language:settings.language=prefs.language
+    _redraw()
 
 
 def _redraw():
@@ -853,12 +1088,13 @@ def _move_target_items(self, context):
     names = tuple(m.name if m else '(boş yuva)' for m in obj.data.materials) if obj and obj.type == 'MESH' else ()
     # Keep Python strings alive: Blender's dynamic enum UI retains references.
     cache = _runtime['target_items']
-    if names not in cache:
-        items = [('MAIN', 'Ana malzeme (1. yuva)', 'Yüzleri mesh’in ilk malzeme yuvasına taşı', 0)]
-        items.extend(('SLOT_' + str(i), name, name + ' malzemesine taşı', i)
+    key=(_language(context),names)
+    if key not in cache:
+        items = [('MAIN', _t('Ana malzeme (1. yuva)',context), _t('Yüzleri mesh’in ilk malzeme yuvasına taşı',context), 0)]
+        items.extend(('SLOT_' + str(i), name, ('Move to ' + name if key[0]=='EN' else name + ' malzemesine taşı'), i)
                      for i, name in enumerate(names) if i > 0)
-        cache[names] = items
-    return cache[names]
+        cache[key] = items
+    return cache[key]
 
 
 def mask_face_indices(bm, mode, material_index):
@@ -1025,7 +1261,18 @@ class KMTR_HoleItem(bpy.types.PropertyGroup):
     material_text: StringProperty()
 
 
+class KMTR_Preferences(bpy.types.AddonPreferences):
+    bl_idname=__name__
+    language: EnumProperty(name='Dil / Language',items=[('TR','Türkçe','Türkçe'),('EN','English','English')],
+                           default='TR',update=_preference_language_changed)
+
+    def draw(self,context):
+        self.layout.prop(self,'language',expand=True)
+
+
 class KMTR_Settings(bpy.types.PropertyGroup):
+    language: EnumProperty(name='Dil / Language',items=[('TR','Türkçe','Türkçe'),('EN','English','English')],
+                           default='TR',options={'SKIP_SAVE'},update=_language_changed)
     patch_max_size: FloatProperty(name='Önizleme açıklık sınırı',default=.15,min=.000001,soft_max=1.0,subtype='DISTANCE',unit='LENGTH')
     patch_opacity: FloatProperty(name='Yama saydamlığı',default=.35,min=.05,max=.85,update=lambda s,c:_redraw())
     hole_items: CollectionProperty(type=KMTR_HoleItem, options={'SKIP_SAVE'})
@@ -1039,7 +1286,7 @@ class KMTR_Settings(bpy.types.PropertyGroup):
                                  subtype='DISTANCE', unit='LENGTH', options={'SKIP_SAVE'})
     merge_connected_only: BoolProperty(name='Yalnız bağlı geometri', default=True, options={'SKIP_SAVE'},
                                       description='Ayrı parçaları kaynaklamamak için birleştirmeyi bağlı geometriyle sınırla')
-    preview_mode: EnumProperty(items=PREVIEW_ITEMS, default='OFF', options={'SKIP_SAVE'}, update=_preview_changed)
+    preview_mode: EnumProperty(items=_localized_items(PREVIEW_ITEMS), default=0, options={'SKIP_SAVE'}, update=_preview_changed)
     opacity: FloatProperty(name='Karartma', description='Yalnız ekrandaki siyah katmanın opaklığı',
                            min=0.05, max=1.0, default=1.0, subtype='FACTOR', options={'SKIP_SAVE'},
                            update=lambda self, context: _redraw())
@@ -1056,11 +1303,7 @@ class KMTR_Settings(bpy.types.PropertyGroup):
     red_fill_opacity: FloatProperty(name='İç dolgu', description='0: tamamen saydam iç ve kırmızı çerçeve. Yalnız çalışma görünümü değişir',
                                    default=0.0, min=0.0, max=0.5, subtype='FACTOR', options={'SKIP_SAVE'},
                                    update=lambda self, context: _redraw())
-    smart_mode: EnumProperty(name='Yöntem', options={'SKIP_SAVE'}, default='AUTO', items=[
-        ('AUTO', 'Otomatik', 'Atanmış malzemeyi ayrı parçalarıyla seç; ana malzemede yüzey sınırını kullan'),
-        ('MATERIAL', 'Aynı malzeme', 'Tıklanan yüzün malzemesini kullanan tüm görünür yüzleri seç'),
-        ('SURFACE', 'Yüzey sınırları', 'Bağlı yüzeyde malzeme, dikiş ve keskinlik sınırlarında dur'),
-    ])
+    smart_mode: EnumProperty(name='Yöntem', options={'SKIP_SAVE'}, default=0, items=_smart_mode_items)
     smart_angle: FloatProperty(name='Açı sınırı', description='Yüzey seçiminde komşu yüzler arasındaki en büyük açı',
                               default=math.radians(35), min=math.radians(1), max=math.radians(179),
                               subtype='ANGLE', options={'SKIP_SAVE'})
@@ -1068,9 +1311,14 @@ class KMTR_Settings(bpy.types.PropertyGroup):
 
 class KMTR_EditOperator:
     @classmethod
+    def description(cls,context,properties):
+        if _language(context)=='EN' and cls.bl_idname in OP_HELP_EN:return OP_HELP_EN[cls.bl_idname]
+        return _t(getattr(cls,'bl_description',''),context)
+
+    @classmethod
     def poll(cls, context):
         if not _single_edit_mesh(context):
-            cls.poll_message_set('Tek bir mesh seçip Düzenleme Modu’na (Tab) geçin')
+            cls.poll_message_set(_t('Tek bir mesh seçip Düzenleme Modu’na (Tab) geçin',context))
             return False
         return True
 
@@ -1104,7 +1352,7 @@ class KMTR_OT_hole_scan(KMTR_EditOperator, bpy.types.Operator):
             item.material_text = ', '.join(names) or '(malzeme yok)'
         settings.hole_active_index = 0
         _holes_overlay_changed(settings, context)
-        self.report({'INFO'}, str(len(regions)) + ' olası açıklık bulundu; otomatik onarım yapılmadı')
+        self.report({'INFO'}, _t(str(len(regions)) + ' olası açıklık bulundu; otomatik onarım yapılmadı',context))
         _redraw()
         return {'FINISHED'}
 
@@ -1113,7 +1361,7 @@ class KMTR_OT_hole_ignore(KMTR_EditOperator,bpy.types.Operator):
     bl_idname='kmtr.hole_ignore'
     bl_label='Açıklığı yoksay'
     bl_description='Önemsiz açıklığı listeden, turkuaz çizgilerden ve onarımdan çıkarır. Geometri değişmez; Yoksayılanları geri getir ile geri alınır'
-    action: EnumProperty(items=[('IGNORE','Bu açıklığı yoksay',''),('RESTORE','Yoksayılanları geri getir','')])
+    action: EnumProperty(items=_localized_items([('IGNORE','Bu açıklığı yoksay',''),('RESTORE','Yoksayılanları geri getir','')]))
     index: IntProperty(default=-1,min=-1,options={'HIDDEN','SKIP_SAVE'})
 
     def execute(self,context):
@@ -1123,7 +1371,7 @@ class KMTR_OT_hole_ignore(KMTR_EditOperator,bpy.types.Operator):
             report=_hole_report(obj,bm)
             index=settings.hole_active_index if self.index<0 else self.index
             if report is None or not 0<=index<len(report['regions']):
-                self.report({'WARNING'},'Geçerli bir açıklık seçin veya yeniden tarayın');return {'CANCELLED'}
+                self.report({'WARNING'},_t('Geçerli bir açıklık seçin veya yeniden tarayın',context));return {'CANCELLED'}
             ignored=set(_ignored_openings(obj,bm))
             ignored.add(report['regions'][index]['edges'])
             _runtime['ignored_holes'][key]={'topology':_boundary_topology_key(bm),'regions':ignored}
@@ -1134,8 +1382,8 @@ class KMTR_OT_hole_ignore(KMTR_EditOperator,bpy.types.Operator):
         clear_repair_preview()
         bpy.ops.kmtr.hole_scan()
         settings.hole_active_index=min(next_index,max(0,len(settings.hole_items)-1))
-        self.report({'INFO'},'Açıklık yoksayıldı; geometri değişmedi' if self.action=='IGNORE'
-                    else 'Bu mesh için yoksayılan açıklıklar geri getirildi')
+        self.report({'INFO'},_t('Açıklık yoksayıldı; geometri değişmedi' if self.action=='IGNORE'
+                    else 'Bu mesh için yoksayılan açıklıklar geri getirildi',context))
         return {'FINISHED'}
 
 
@@ -1151,12 +1399,12 @@ class KMTR_OT_hole_focus(KMTR_EditOperator, bpy.types.Operator):
         obj, bm = _edit_mesh(context)
         report = _hole_report(obj, bm)
         if report is None or self.index >= len(report['regions']):
-            self.report({'WARNING'}, 'Tarama yok veya geometri değişti; önce tekrar tarayın')
+            self.report({'WARNING'}, _t('Tarama yok veya geometri değişti; önce tekrar tarayın',context))
             return {'CANCELLED'}
         region = report['regions'][self.index]
         ids = [i for i in region['edges'] if not bm.edges[i].hide and not any(v.hide for v in bm.edges[i].verts)]
         if not ids:
-            self.report({'WARNING'}, 'Bu sınır gizli. Önce yüzleri görünür yapıp tekrar deneyin')
+            self.report({'WARNING'}, _t('Bu sınır gizli. Önce yüzleri görünür yapıp tekrar deneyin',context))
             return {'CANCELLED'}
         context.tool_settings.mesh_select_mode = (False, True, False)
         for face in bm.faces: face.select_set(False)
@@ -1178,8 +1426,8 @@ class KMTR_OT_repair_preview(KMTR_EditOperator, bpy.types.Operator):
     bl_label='Yama önizlemesi'
     bl_description='Çok kenarlı/eğri kapalı sınır için mor üçgen önerisi gösterir. Yalnız Uygula gerçek yüz ekler; Ctrl+Z geri alır'
     bl_options={'REGISTER','UNDO'}
-    action: EnumProperty(items=[('BUILD','Önizle',''),('APPLY','Önizlemeyi uygula',''),('CANCEL','Önizlemeyi iptal et','')])
-    scope: EnumProperty(items=[('ACTIVE','Listedeki açıklık',''),('ALL','Taramadaki uygun açıklıklar','')],default='ACTIVE')
+    action: EnumProperty(items=_localized_items([('BUILD','Önizle',''),('APPLY','Önizlemeyi uygula',''),('CANCEL','Önizlemeyi iptal et','')]))
+    scope: EnumProperty(items=_localized_items([('ACTIVE','Listedeki açıklık',''),('ALL','Taramadaki uygun açıklıklar','')]),default=0)
 
     def execute(self,context):
         if self.action=='CANCEL':
@@ -1189,27 +1437,27 @@ class KMTR_OT_repair_preview(KMTR_EditOperator, bpy.types.Operator):
             clear_repair_preview()
             report=_hole_report(obj,bm)
             if report is None:
-                self.report({'WARNING'},'Önce açıklıkları yeniden tarayın');return {'CANCELLED'}
+                self.report({'WARNING'},_t('Önce açıklıkları yeniden tarayın',context));return {'CANCELLED'}
             regions=report['regions']
             if self.scope=='ACTIVE':regions=regions[settings.hole_active_index:settings.hole_active_index+1]
             plan=build_repair_preview(obj,bm,regions,settings.patch_max_size)
             _runtime['repair_preview']=plan
             _runtime['patch_check']=True
             if not plan['patches']:
-                self.report({'WARNING'},'Bu sınır için yama önerilemedi; nedenleri panelde');_redraw()
+                self.report({'WARNING'},_t('Bu sınır için yama önerilemedi; nedenleri panelde',context));_redraw()
                 return {'CANCELLED'}
             if not bpy.app.background:
                 _runtime['patch_handler']=bpy.types.SpaceView3D.draw_handler_add(_draw_patch,(),'WINDOW','POST_VIEW')
                 bpy.app.timers.register(_patch_tick,first_interval=.1)
             count=sum(len(p['triangles']) for p in plan['patches'])
-            self.report({'INFO'},str(len(plan['patches']))+' yama / '+str(count)+' üçgen yalnız önizlemede; henüz yüz eklenmedi')
+            self.report({'INFO'},_t(str(len(plan['patches']))+' yama / '+str(count)+' üçgen yalnız önizlemede; henüz yüz eklenmedi',context))
             _redraw();return {'FINISHED'}
         plan=_runtime['repair_preview']
         if not plan or not plan['patches']:
-            self.report({'WARNING'},'Önce bir yama önizlemesi oluşturun');return {'CANCELLED'}
+            self.report({'WARNING'},_t('Önce bir yama önizlemesi oluşturun',context));return {'CANCELLED'}
         if plan['state']!=_repair_state_key(obj,bm) or plan['max_size']!=settings.patch_max_size:
             clear_repair_preview('Model veya boyut sınırı değişti; yeniden önizleyin.')
-            self.report({'WARNING'},_runtime['patch_error']);return {'CANCELLED'}
+            self.report({'WARNING'},_t(_runtime['patch_error'],context));return {'CANCELLED'}
         created=[];old_edges=set(bm.edges)
         try:
             for patch in plan['patches']:
@@ -1225,12 +1473,12 @@ class KMTR_OT_repair_preview(KMTR_EditOperator, bpy.types.Operator):
                 if face.is_valid:bm.faces.remove(face)
             for edge in set(bm.edges)-old_edges:
                 if not edge.link_faces:bm.edges.remove(edge)
-            self.report({'ERROR'},'Yama uygulanamadı: '+str(exc));return {'CANCELLED'}
+            self.report({'ERROR'},_t('Yama uygulanamadı: '+str(exc),context));return {'CANCELLED'}
         count=len(created)
         bm.faces.index_update();bm.faces.ensure_lookup_table()
         _set_faces(context,bm,{f.index for f in created})
         _topology_edited(obj,preserve_ignored=True);bpy.ops.kmtr.hole_scan()
-        self.report({'INFO'},str(count)+' önizlenen üçgen eklendi. Yeni UV’leri kontrol edin. Ctrl+Z: geri al')
+        self.report({'INFO'},_t(str(count)+' önizlenen üçgen eklendi. Yeni UV’leri kontrol edin. Ctrl+Z: geri al',context))
         return {'FINISHED'}
 
 
@@ -1240,13 +1488,13 @@ class KMTR_OT_hole_repair(KMTR_EditOperator, bpy.types.Operator):
     bl_description = 'Taramadaki küçük, görünür, düzlemsel üçgen/dörtgen açıklıkları kapatır. Büyük, karışık veya çakışan sınırları atlar. Gerçek geometri değişir; Ctrl+Z ile geri alınır'
     bl_options = {'REGISTER', 'UNDO'}
     preview_only: BoolProperty(default=False, options={'HIDDEN', 'SKIP_SAVE'})
-    scope: EnumProperty(items=[('ALL', 'Taramadaki uygun açıklıklar', ''), ('ACTIVE', 'Listedeki açıklık', '')], default='ALL')
+    scope: EnumProperty(items=_localized_items([('ALL', 'Taramadaki uygun açıklıklar', ''), ('ACTIVE', 'Listedeki açıklık', '')]), default=0)
 
     def execute(self, context):
         obj, bm = _edit_mesh(context)
         report = _hole_report(obj, bm)
         if report is None:
-            self.report({'WARNING'}, 'Önce açıklıkları tekrar tarayın')
+            self.report({'WARNING'}, _t('Önce açıklıkları tekrar tarayın',context))
             return {'CANCELLED'}
         settings = context.window_manager.kmtr_settings
         regions = report['regions']
@@ -1261,11 +1509,11 @@ class KMTR_OT_hole_repair(KMTR_EditOperator, bpy.types.Operator):
         summary = {'mesh': _mesh_key(obj.data), 'eligible':len(eligible), 'filled':0, 'skipped':reasons}
         _runtime['repair_report'] = summary
         if self.preview_only:
-            self.report({'INFO'}, str(len(eligible))+' uygun küçük açıklık; '+str(len(plans)-len(eligible))+' atlanacak')
+            self.report({'INFO'}, _t(str(len(eligible))+' uygun küçük açıklık; '+str(len(plans)-len(eligible))+' atlanacak',context))
             _redraw()
             return {'FINISHED'}
         if not eligible:
-            self.report({'WARNING'}, 'Bu sınırlar için uygun küçük delik yok; atlama nedenleri panelde')
+            self.report({'WARNING'}, _t('Bu sınırlar için uygun küçük delik yok; atlama nedenleri panelde',context))
             _redraw()
             return {'CANCELLED'}
         count = 0
@@ -1292,7 +1540,7 @@ class KMTR_OT_hole_repair(KMTR_EditOperator, bpy.types.Operator):
         _topology_edited(obj,preserve_ignored=True)
         bpy.ops.kmtr.hole_scan()
         _runtime['repair_report'] = summary
-        self.report({'INFO'}, str(count)+' yeni yüz eklendi; '+str(len(plans)-len(eligible))+' sınır atlandı. Yeni yüzlerin UV’lerini kontrol edin. Ctrl+Z: geri al')
+        self.report({'INFO'}, _t(str(count)+' yeni yüz eklendi; '+str(len(plans)-len(eligible))+' sınır atlandı. Yeni yüzlerin UV’lerini kontrol edin. Ctrl+Z: geri al',context))
         return {'FINISHED'}
 
 
@@ -1306,12 +1554,12 @@ class KMTR_OT_merge_selected(KMTR_EditOperator, bpy.types.Operator):
         obj, bm = _edit_mesh(context)
         verts = [v for v in bm.verts if v.select and not v.hide]
         if len(verts) < 2:
-            self.report({'WARNING'}, 'Önce birleştirilecek en az iki noktayı seçin')
+            self.report({'WARNING'}, _t('Önce birleştirilecek en az iki noktayı seçin',context))
             return {'CANCELLED'}
         settings = context.window_manager.kmtr_settings
         scale = max(abs(v) for v in obj.matrix_world.to_scale())
         if scale <= 1e-12:
-            self.report({'WARNING'}, 'Sıfır ölçekli nesnede birleştirme yapılamaz')
+            self.report({'WARNING'}, _t('Sıfır ölçekli nesnede birleştirme yapılamaz',context))
             return {'CANCELLED'}
         before = len(bm.verts)
         bmesh.ops.remove_doubles(bm, verts=verts, use_connected=settings.merge_connected_only,
@@ -1319,7 +1567,7 @@ class KMTR_OT_merge_selected(KMTR_EditOperator, bpy.types.Operator):
         removed = before-len(bm.verts)
         if removed:
             _topology_edited(obj); bpy.ops.kmtr.hole_scan()
-        self.report({'INFO'}, str(removed)+' nokta birleştirildi. Ctrl+Z: geri al')
+        self.report({'INFO'}, _t(str(removed)+' nokta birleştirildi. Ctrl+Z: geri al',context))
         return {'FINISHED'}
 
 
@@ -1328,12 +1576,12 @@ class KMTR_OT_material_select(KMTR_EditOperator, bpy.types.Operator):
     bl_label = 'Malzemeden yüz seç'
     bl_description = 'Etkin malzemenin görünen yüzlerini seç, mevcut seçime ekle veya seçimden çıkar'
     bl_options = {'REGISTER', 'UNDO'}
-    action: EnumProperty(items=[('REPLACE', 'Seç', ''), ('ADD', 'Ekle', ''), ('SUBTRACT', 'Çıkar', '')])
+    action: EnumProperty(items=_localized_items([('REPLACE', 'Seç', ''), ('ADD', 'Ekle', ''), ('SUBTRACT', 'Çıkar', '')]))
 
     def execute(self, context):
         obj, bm = _edit_mesh(context)
         if not obj.active_material:
-            self.report({'WARNING'}, 'Önce listeden bir malzeme seçin')
+            self.report({'WARNING'}, _t('Önce listeden bir malzeme seçin',context))
             return {'CANCELLED'}
         target = {f.index for f in bm.faces if not f.hide and f.material_index == obj.active_material_index}
         current = {f.index for f in bm.faces if f.select and not f.hide}
@@ -1347,10 +1595,10 @@ class KMTR_OT_material_color(KMTR_EditOperator, bpy.types.Operator):
     bl_idname = 'kmtr.material_color'
     bl_label = 'Yalnız görünüm rengi'
     bl_description = 'Malzemeye yalnız çalışma ekranında renk verir veya önizleme rengini kaldırır. Gerçek renk, shader, UV ve dışa aktarım değişmez'
-    action: EnumProperty(items=[('APPLY', 'Bu malzemeyi önizlemede boya', ''),
+    action: EnumProperty(items=_localized_items([('APPLY', 'Bu malzemeyi önizlemede boya', ''),
                                 ('RANDOM_ALL', 'Tüm malzemelere farklı rastgele renkler', ''),
                                 ('CLEAR_ACTIVE', 'Bu malzemenin önizleme rengini kaldır', ''),
-                                ('CLEAR_ALL', 'Tüm önizleme renklerini temizle', '')])
+                                ('CLEAR_ALL', 'Tüm önizleme renklerini temizle', '')]))
     seed: IntProperty(default=-1, options={'HIDDEN', 'SKIP_SAVE'})
 
     def execute(self, context):
@@ -1359,7 +1607,7 @@ class KMTR_OT_material_color(KMTR_EditOperator, bpy.types.Operator):
         if self.action == 'RANDOM_ALL':
             materials = {_mesh_key(slot.material):slot.material for slot in obj.material_slots if slot.material}
             if not materials:
-                self.report({'WARNING'}, 'Bu mesh üzerinde malzeme yok')
+                self.report({'WARNING'}, _t('Bu mesh üzerinde malzeme yok',context))
                 return {'CANCELLED'}
             rng = random.Random(None if self.seed < 0 else self.seed)
             hues = list(range(len(materials)));rng.shuffle(hues);base = rng.random()
@@ -1372,7 +1620,7 @@ class KMTR_OT_material_color(KMTR_EditOperator, bpy.types.Operator):
         else:
             mat = obj.active_material
             if mat is None:
-                self.report({'WARNING'}, 'Önce listeden bir malzeme seçin')
+                self.report({'WARNING'}, _t('Önce listeden bir malzeme seçin',context))
                 return {'CANCELLED'}
             key = _mesh_key(mat)
             if self.action == 'APPLY':
@@ -1398,24 +1646,24 @@ class KMTR_OT_remove_from_material(KMTR_EditOperator, bpy.types.Operator):
         try:
             destination = 0 if token == 'MAIN' else int(token.removeprefix('SLOT_'))
         except ValueError:
-            self.report({'WARNING'}, 'Geçerli bir hedef malzeme seçin')
+            self.report({'WARNING'}, _t('Geçerli bir hedef malzeme seçin',context))
             return {'CANCELLED'}
         source = obj.active_material_index
         if not (0 <= source < len(obj.data.materials) and 0 <= destination < len(obj.data.materials)):
-            self.report({'WARNING'}, 'Kaynak ve hedef malzeme yuvalarını kontrol edin')
+            self.report({'WARNING'}, _t('Kaynak ve hedef malzeme yuvalarını kontrol edin',context))
             return {'CANCELLED'}
         if destination == source:
-            self.report({'WARNING'}, 'Kaynak ve hedef aynı. Farklı bir hedef malzeme seçin')
+            self.report({'WARNING'}, _t('Kaynak ve hedef aynı. Farklı bir hedef malzeme seçin',context))
             return {'CANCELLED'}
         faces = [f for f in bm.faces if f.select and not f.hide and f.material_index == source]
         if not faces:
-            self.report({'WARNING'}, 'Seçimde kaynak malzemeye ait yüz yok; kaynak malzemeyi listeden seçin')
+            self.report({'WARNING'}, _t('Seçimde kaynak malzemeye ait yüz yok; kaynak malzemeyi listeden seçin',context))
             return {'CANCELLED'}
         for face in faces:
             face.material_index = destination
         _flush(obj)
         target_mat = obj.data.materials[destination]
-        self.report({'INFO'}, str(len(faces)) + ' yüz ' + (target_mat.name if target_mat else 'boş malzeme yuvası') + ' hedefine taşındı')
+        self.report({'INFO'}, _t(str(len(faces)) + ' yüz ' + (target_mat.name if target_mat else 'boş malzeme yuvası') + ' hedefine taşındı',context))
         return {'FINISHED'}
 
 
@@ -1425,12 +1673,12 @@ class KMTR_OT_smart_select(KMTR_EditOperator, bpy.types.Operator):
     bl_description = 'Bir yüzü tıklayarak bölgesini seç. Shift: ekle, Ctrl: seçimden çıkar. Atanmış malzemede ayrı parçalar da seçilir; yüzey modunda açı ve malzeme sınırları kullanılır'
     bl_options = {'REGISTER', 'UNDO'}
     face_index: IntProperty(default=-1, options={'HIDDEN', 'SKIP_SAVE'})
-    action: EnumProperty(items=[('REPLACE', 'Seç', ''), ('ADD', 'Ekle', ''), ('SUBTRACT', 'Çıkar', '')], default='REPLACE')
+    action: EnumProperty(items=_localized_items([('REPLACE', 'Seç', ''), ('ADD', 'Ekle', ''), ('SUBTRACT', 'Çıkar', '')]), default=0)
 
     def execute(self, context):
         obj, bm = _edit_mesh(context)
         if not 0 <= self.face_index < len(bm.faces):
-            self.report({'WARNING'}, 'Akıllı seçim düğmesine basıp modelde bir yüz tıklayın')
+            self.report({'WARNING'}, _t('Akıllı seçim düğmesine basıp modelde bir yüz tıklayın',context))
             return {'CANCELLED'}
         settings = context.window_manager.kmtr_settings
         material_index = bm.faces[self.face_index].material_index
@@ -1447,7 +1695,7 @@ class KMTR_OT_smart_select(KMTR_EditOperator, bpy.types.Operator):
         if material_index < len(obj.data.materials):
             obj.active_material_index = material_index
         _flush(obj)
-        self.report({'INFO'}, str(len(target)) + ' yüz: ' + ('malzeme grubu' if mode == 'MATERIAL' or mode == 'AUTO' and material_index != 0 else 'yüzey bölgesi'))
+        self.report({'INFO'}, _t(str(len(target)) + ' yüz: ' + ('malzeme grubu' if mode == 'MATERIAL' or mode == 'AUTO' and material_index != 0 else 'yüzey bölgesi'),context))
         return {'FINISHED'}
 
     def invoke(self, context, event):
@@ -1458,7 +1706,7 @@ class KMTR_OT_smart_select(KMTR_EditOperator, bpy.types.Operator):
         self._area = context.area
         self._object_key = context.edit_object.as_pointer()
         context.window.cursor_modal_set('CROSSHAIR')
-        context.workspace.status_text_set('Akıllı seçim: modele sol tıkla · Shift: ekle · Ctrl: çıkar · Esc: iptal')
+        context.workspace.status_text_set(_t('Akıllı seçim: modele sol tıkla · Shift: ekle · Ctrl: çıkar · Esc: iptal',context))
         context.window_manager.modal_handler_add(self)
         return {'RUNNING_MODAL'}
 
@@ -1490,7 +1738,7 @@ class KMTR_OT_smart_select(KMTR_EditOperator, bpy.types.Operator):
             inverse = obj.matrix_world.inverted_safe()
             index = raycast_face_index(bm, inverse @ origin, inverse.to_3x3() @ direction)
             if index is None:
-                self.report({'INFO'}, 'Modelde görünür bir yüz tıklayın; Esc ile iptal edebilirsiniz')
+                self.report({'INFO'}, _t('Modelde görünür bir yüz tıklayın; Esc ile iptal edebilirsiniz',context))
                 return {'RUNNING_MODAL'}
             self.face_index = index
             self.action = 'SUBTRACT' if event.ctrl else 'ADD' if event.shift else 'REPLACE'
@@ -1504,9 +1752,9 @@ class KMTR_OT_red_action(KMTR_EditOperator, bpy.types.Operator):
     bl_label = 'Kırmızı yüzler'
     bl_description = 'Kırmızı işaretleri temizle veya yalnız kırmızı yüzleri 1. ana malzemeye taşı. İşaret rengi geçicidir; aktarma Ctrl+Z ile geri alınır'
     bl_options = {'REGISTER', 'UNDO'}
-    action: EnumProperty(items=[('TRANSFER', 'Kırmızıları ana malzemeye taşı', ''), ('CLEAR', 'Kırmızıları temizle', ''),
+    action: EnumProperty(items=_localized_items([('TRANSFER', 'Kırmızıları ana malzemeye taşı', ''), ('CLEAR', 'Kırmızıları temizle', ''),
                                 ('MARK_SELECTION', 'Seçilileri kırmızı işaretle', 'Normal seçim aracıyla seçilen yüzleri geçici kırmızı işaretlere ekle'),
-                                ('UNMARK_SELECTION', 'Seçilileri kırmızıdan çıkar', 'Seçili yüzlerin yalnız kırmızı işaretini kaldır')])
+                                ('UNMARK_SELECTION', 'Seçilileri kırmızıdan çıkar', 'Seçili yüzlerin yalnız kırmızı işaretini kaldır')]))
 
     def execute(self, context):
         if self.action == 'CLEAR':
@@ -1516,20 +1764,20 @@ class KMTR_OT_red_action(KMTR_EditOperator, bpy.types.Operator):
         if self.action in {'MARK_SELECTION', 'UNMARK_SELECTION'}:
             selected = {f.index for f in bm.faces if f.select and not f.hide}
             if not selected:
-                self.report({'WARNING'}, 'Önce seçim aracıyla yüzleri seçin')
+                self.report({'WARNING'}, _t('Önce seçim aracıyla yüzleri seçin',context))
                 return {'CANCELLED'}
             mark_red_faces(context, selected, erase=self.action == 'UNMARK_SELECTION')
             return {'FINISHED'}
         ids = red_face_indices(obj, bm)
         if not ids or not obj.data.materials:
-            self.report({'WARNING'}, 'Önce Ctrl+sol tık ile turuncu yüzleri kırmızı işaretleyin')
+            self.report({'WARNING'}, _t('Önce Ctrl+sol tık ile turuncu yüzleri kırmızı işaretleyin',context))
             return {'CANCELLED'}
         originals = _runtime['red_marks']['faces']
         if any(bm.faces[i].material_index != originals[i] for i in ids):
-            self.report({'WARNING'}, 'İşaretlemeden sonra malzeme ataması değişti; işaretleri temizleyip yeniden işaretleyin')
+            self.report({'WARNING'}, _t('İşaretlemeden sonra malzeme ataması değişti; işaretleri temizleyip yeniden işaretleyin',context))
             return {'CANCELLED'}
         if any(bm.faces[i].hide for i in ids):
-            self.report({'WARNING'}, 'Kırmızı yüzlerden bazıları gizli. Önce görünür yapın veya işaretleri temizleyin')
+            self.report({'WARNING'}, _t('Kırmızı yüzlerden bazıları gizli. Önce görünür yapın veya işaretleri temizleyin',context))
             return {'CANCELLED'}
         for i in ids:
             bm.faces[i].material_index = 0
@@ -1537,7 +1785,7 @@ class KMTR_OT_red_action(KMTR_EditOperator, bpy.types.Operator):
         _set_faces(context, bm, selected)
         clear_red_marks()
         _flush(obj)
-        self.report({'INFO'}, str(len(ids)) + ' kırmızı yüz 1. ana malzemeye taşındı')
+        self.report({'INFO'}, _t(str(len(ids)) + ' kırmızı yüz 1. ana malzemeye taşındı',context))
         return {'FINISHED'}
 
 
@@ -1599,7 +1847,7 @@ class KMTR_OT_red_paint(KMTR_EditOperator, bpy.types.Operator):
         self._erase = red_stroke_erases(obj, bm, first_face, force_erase=event.shift)
         self._last = (event.mouse_x, event.mouse_y)
         self._paint(context, event.mouse_x, event.mouse_y)
-        context.workspace.status_text_set(('Kırmızı işaret silme' if self._erase else 'Kırmızı işaret ekleme') + ' · sol tuşu bırak: bitir · Esc: bu çizgiyi iptal et')
+        context.workspace.status_text_set(_t(('Kırmızı işaret silme' if self._erase else 'Kırmızı işaret ekleme') + ' · sol tuşu bırak: bitir · Esc: bu çizgiyi iptal et',context))
         context.window_manager.modal_handler_add(self)
         return {'RUNNING_MODAL'}
 
@@ -1627,8 +1875,8 @@ class KMTR_OT_selection_action(KMTR_EditOperator, bpy.types.Operator):
     bl_label = 'Seçimi düzenle'
     bl_description = 'Yüz seçimini temizle, tersine çevir, bir halka büyüt veya küçült'
     bl_options = {'REGISTER', 'UNDO'}
-    action: EnumProperty(items=[('CLEAR', 'Temizle', ''), ('INVERT', 'Ters çevir', ''),
-                                ('GROW', 'Büyüt', ''), ('SHRINK', 'Küçült', '')])
+    action: EnumProperty(items=_localized_items([('CLEAR', 'Temizle', ''), ('INVERT', 'Ters çevir', ''),
+                                ('GROW', 'Büyüt', ''), ('SHRINK', 'Küçült', '')]))
 
     def execute(self, context):
         obj, bm = _edit_mesh(context)
@@ -1648,8 +1896,8 @@ class KMTR_OT_brush(KMTR_EditOperator, bpy.types.Operator):
     bl_idname = 'kmtr.brush'
     bl_label = 'Yüz seçim fırçası'
     bl_description = 'Sol tuşla sürükleyerek seçime ekle veya çıkar. Boyutu panelden değiştirin. X-Ray açıksa arkadaki yüzler de seçilebilir'
-    action: EnumProperty(items=[('ADD', 'Fırça +', 'Yüzleri seçime ekle'), ('SUB', 'Fırça −', 'Yüzleri seçimden çıkar'),
-                                ('BOX', 'Kutu seçimine dön', 'Dairesel fırçadan çık ve kutu seçimini etkinleştir')])
+    action: EnumProperty(items=_localized_items([('ADD', 'Fırça +', 'Yüzleri seçime ekle'), ('SUB', 'Fırça −', 'Yüzleri seçimden çıkar'),
+                                ('BOX', 'Kutu seçimine dön', 'Dairesel fırçadan çık ve kutu seçimini etkinleştir')]))
 
     def execute(self, context):
         context.tool_settings.mesh_select_mode = (False, False, True)
@@ -1674,7 +1922,7 @@ class KMTR_OT_selection_memory(KMTR_EditOperator, bpy.types.Operator):
     bl_label = 'Seçim hafızası'
     bl_description = 'Seçimi geçici hafızaya al veya geri çağır; topoloji değişirse eski seçim uygulanmaz'
     bl_options = {'REGISTER', 'UNDO'}
-    action: EnumProperty(items=[('STORE', 'Seçimi sakla', ''), ('RESTORE', 'Geri çağır', '')])
+    action: EnumProperty(items=_localized_items([('STORE', 'Seçimi sakla', ''), ('RESTORE', 'Geri çağır', '')]))
 
     def execute(self, context):
         obj, bm = _edit_mesh(context)
@@ -1682,14 +1930,14 @@ class KMTR_OT_selection_memory(KMTR_EditOperator, bpy.types.Operator):
         if self.action == 'STORE':
             ids = {f.index for f in bm.faces if f.select and not f.hide}
             _runtime['memory'][key] = (_topology_key(bm), ids)
-            self.report({'INFO'}, str(len(ids)) + ' yüz hafızaya alındı')
+            self.report({'INFO'}, _t(str(len(ids)) + ' yüz hafızaya alındı',context))
         else:
             stored = _runtime['memory'].get(key)
             if stored is None:
-                self.report({'WARNING'}, 'Bu mesh için saklanmış seçim yok')
+                self.report({'WARNING'}, _t('Bu mesh için saklanmış seçim yok',context))
                 return {'CANCELLED'}
             if stored[0] != _topology_key(bm):
-                self.report({'WARNING'}, 'Topoloji değişti; yanlış yüz seçmemek için geri çağırma iptal edildi')
+                self.report({'WARNING'}, _t('Topoloji değişti; yanlış yüz seçmemek için geri çağırma iptal edildi',context))
                 return {'CANCELLED'}
             _set_faces(context, bm, stored[1])
             _flush(obj)
@@ -1701,20 +1949,20 @@ class KMTR_OT_isolate(KMTR_EditOperator, bpy.types.Operator):
     bl_label = 'Yüzleri yalıt'
     bl_description = 'Seçim dışını gizle veya önceki görünürlüğe dön; önceden gizli yüzler korunur'
     bl_options = {'REGISTER', 'UNDO'}
-    action: EnumProperty(items=[('HIDE', 'Diğerlerini gizle', ''), ('RESTORE', 'Gizlemeyi geri al', ''),
-                                ('REVEAL', 'Tüm gizlileri göster', '')])
+    action: EnumProperty(items=_localized_items([('HIDE', 'Diğerlerini gizle', ''), ('RESTORE', 'Gizlemeyi geri al', ''),
+                                ('REVEAL', 'Tüm gizlileri göster', '')]))
 
     def execute(self, context):
         obj, bm = _edit_mesh(context)
         if self.action == 'HIDE':
             if any(elements.layers.int.get(name) is not None for elements, name in zip((bm.verts, bm.edges, bm.faces), _HIDDEN_LAYERS)):
-                self.report({'WARNING'}, 'Önce önceki gizlemeyi geri alın')
+                self.report({'WARNING'}, _t('Önce önceki gizlemeyi geri alın',context))
                 return {'CANCELLED'}
             if not any(f.select and not f.hide for f in bm.faces):
-                self.report({'WARNING'}, 'Önce en az bir yüz seçin')
+                self.report({'WARNING'}, _t('Önce en az bir yüz seçin',context))
                 return {'CANCELLED'}
             if not any(not f.hide and not f.select for f in bm.faces):
-                self.report({'INFO'}, 'Gizlenecek başka görünür yüz yok')
+                self.report({'INFO'}, _t('Gizlenecek başka görünür yüz yok',context))
                 return {'CANCELLED'}
             _store_hidden(bm)
             for face in bm.faces:
@@ -1722,11 +1970,11 @@ class KMTR_OT_isolate(KMTR_EditOperator, bpy.types.Operator):
                     face.hide_set(True)
         elif self.action == 'RESTORE':
             if _isolation_layers(bm) is None:
-                self.report({'WARNING'}, 'Geri alınacak gizleme yok')
+                self.report({'WARNING'}, _t('Geri alınacak gizleme yok',context))
                 return {'CANCELLED'}
             selected = {f.index for f in bm.faces if f.select and not f.hide}
             if not _restore_hidden(bm):
-                self.report({'WARNING'}, 'Topoloji değişti. Gerekirse “Tüm gizlileri göster” düğmesini kullanın')
+                self.report({'WARNING'}, _t('Topoloji değişti. Gerekirse “Tüm gizlileri göster” düğmesini kullanın',context))
                 return {'CANCELLED'}
             _set_faces(context, bm, selected)
         else:
@@ -1748,7 +1996,7 @@ class KMTR_OT_preview(KMTR_EditOperator, bpy.types.Operator):
 
     def execute(self, context):
         if self.mode != 'OFF' and not _single_edit_mesh(context):
-            self.report({'WARNING'}, 'Tek bir mesh ile Düzenleme Modu’na geçin')
+            self.report({'WARNING'}, _t('Tek bir mesh ile Düzenleme Modu’na geçin',context))
             return {'CANCELLED'}
         if self.mode == 'OFF':
             _runtime['material_colors'].clear()
@@ -1766,12 +2014,12 @@ class KMTR_OT_assign_material(KMTR_EditOperator, bpy.types.Operator):
         obj, bm = _edit_mesh(context)
         selected = [f for f in bm.faces if f.select and not f.hide]
         if not obj.active_material or not selected:
-            self.report({'WARNING'}, 'Bir malzeme ve en az bir yüz seçin')
+            self.report({'WARNING'}, _t('Bir malzeme ve en az bir yüz seçin',context))
             return {'CANCELLED'}
         for face in selected:
             face.material_index = obj.active_material_index
         _flush(obj)
-        self.report({'INFO'}, str(len(selected)) + ' yüze ' + obj.active_material.name + ' atandı')
+        self.report({'INFO'}, _t(str(len(selected)) + ' yüze ' + obj.active_material.name + ' atandı',context))
         return {'FINISHED'}
 
 
@@ -1787,7 +2035,7 @@ class KMTR_OT_new_material(KMTR_EditOperator, bpy.types.Operator):
         selected = [f for f in bm.faces if f.select and not f.hide]
         name = (self.name or context.window_manager.kmtr_settings.new_name).strip()
         if not selected or not name:
-            self.report({'WARNING'}, 'En az bir yüz seçin ve malzeme adı yazın')
+            self.report({'WARNING'}, _t('En az bir yüz seçin ve malzeme adı yazın',context))
             return {'CANCELLED'}
         mat = bpy.data.materials.get(name)
         if mat is None:
@@ -1801,7 +2049,7 @@ class KMTR_OT_new_material(KMTR_EditOperator, bpy.types.Operator):
         for face in selected:
             face.material_index = slot
         _flush(obj)
-        self.report({'INFO'}, str(len(selected)) + ' yüze ' + mat.name + ' atandı')
+        self.report({'INFO'}, _t(str(len(selected)) + ' yüze ' + mat.name + ' atandı',context))
         return {'FINISHED'}
 
 
@@ -1812,219 +2060,202 @@ def _op(layout, operator, text, **props):
     return button
 
 
+class _UILayout:
+    """Translate only UI text; datablock names/values remain untouched."""
+    def __init__(self,layout):object.__setattr__(self,'raw',layout)
+    def __getattr__(self,key):return getattr(self.raw,key)
+    def __setattr__(self,key,value):setattr(self.raw,key,value)
+    def row(self,**kwargs):return _UILayout(self.raw.row(**kwargs))
+    def column(self,**kwargs):return _UILayout(self.raw.column(**kwargs))
+    def box(self):return _UILayout(self.raw.box())
+    def label(self,**kwargs):
+        if 'text' in kwargs and kwargs.get('translate',True):kwargs['text']=_t(kwargs['text'])
+        kwargs['translate']=False
+        return self.raw.label(**kwargs)
+    def prop(self,data,name,**kwargs):
+        kwargs['text']=_t(kwargs.get('text',data.bl_rna.properties[name].name))
+        kwargs['translate']=False
+        return self.raw.prop(data,name,**kwargs)
+    def operator(self,operator,**kwargs):
+        text=kwargs.get('text')
+        if text is None:
+            category,name=operator.split('.')
+            text=getattr(getattr(bpy.ops,category),name).get_rna_type().name
+        kwargs['text']=_t(text);kwargs['translate']=False
+        return self.raw.operator(operator,**kwargs)
+
+
+def _section(layout,key,title,icon='NONE',closed=True):
+    raw=layout.raw if isinstance(layout,_UILayout) else layout
+    header,body=raw.panel('facepilot_'+key,default_closed=closed)
+    _UILayout(header).label(text=title,icon=icon)
+    return _UILayout(body) if body else None
+
+
 class KMTR_UL_holes(bpy.types.UIList):
-    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
-        row = layout.row(align=True)
+    def draw_item(self,context,layout,data,item,icon,active_data,active_propname,index):
+        row=_UILayout(layout).row(align=True)
         row.label(text=item.name)
-        row.label(text=str(item.edge_count) + ' kenar')
-        row.operator('kmtr.hole_focus', text='', icon='VIEWZOOM').index = index
-        ignore=row.operator('kmtr.hole_ignore',text='',icon='X')
-        ignore.action='IGNORE';ignore.index=index
+        row.label(text=str(item.edge_count)+' kenar')
+        row.operator('kmtr.hole_focus',text='',icon='VIEWZOOM').index=index
+        op=row.operator('kmtr.hole_ignore',text='',icon='X');op.action='IGNORE';op.index=index
 
 
-class KMTR_PT_holes(bpy.types.Panel):
-    bl_label = 'Olası eksik yüzler / açıklıklar'
-    bl_idname = 'KMTR_PT_holes'
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-    bl_category = 'Kolay Malzeme'
-    bl_order = -1
-
-    def draw(self, context):
-        layout = self.layout
-        if not _single_edit_mesh(context):
-            layout.label(text='Tek bir mesh ile Düzenleme Modu’na geçin.')
-            return
-        obj = context.edit_object
-        settings = context.window_manager.kmtr_settings
-        layout.label(text='Açık sınırları bulur; yüz oluşturmaz.')
-        layout.label(text='Her açıklık eksik yüz olmayabilir.', icon='INFO')
-        layout.prop(settings, 'hole_active_material_only')
-        if settings.hole_active_material_only:
-            layout.label(text='Malzeme: ' + (obj.active_material.name if obj.active_material else '(boş)'))
-        layout.operator('kmtr.hole_scan', text='Eksik yüz / açıklık tara', icon='VIEWZOOM')
-        report = _runtime['hole_scan']
-        if report is None or report['mesh'] != _mesh_key(obj.data):
-            return
-        if report['stale']:
-            layout.label(text='Geometri değişti; tekrar tarayın.', icon='ERROR')
-            return
-        layout.label(text=str(len(report['regions'])) + ' olası açıklık bulundu')
-        ignored_count=report.get('ignored_count',0)
-        if ignored_count:
-            layout.label(text=str(ignored_count)+' açıklık yoksayıldı',icon='HIDE_ON')
-        restore=layout.row()
-        restore.enabled=bool(_runtime['ignored_holes'].get(_mesh_key(obj.data),{}).get('regions'))
-        restore.operator('kmtr.hole_ignore',text='Yoksayılanları geri getir',icon='LOOP_BACK').action='RESTORE'
-        if settings.hole_items:
-            layout.template_list('KMTR_UL_holes', '', settings, 'hole_items', settings, 'hole_active_index', rows=5)
-            index = min(settings.hole_active_index, len(settings.hole_items)-1)
-            item = settings.hole_items[index]
-            layout.label(text=item.kind + ' · ' + str(item.edge_count) + ' kenar')
-            layout.label(text='Malzeme: ' + item.material_text)
-            hidden = report['regions'][index]['hidden_edges']
-            if hidden:
-                layout.label(text=str(hidden) + ' sınır kenarı gizli', icon='INFO')
-            op = layout.operator('kmtr.hole_focus', text='Listedeki açıklığı seç ve yaklaş', icon='VIEWZOOM')
-            op.index = index
-            op=layout.operator('kmtr.hole_ignore',text='Bu açıklığı yoksay',icon='X')
-            op.action='IGNORE';op.index=index
-        layout.prop(settings, 'hole_overlay')
-        box=layout.box()
-        box.label(text='Önizlemeli onarım (önerilen)',icon='HIDE_OFF')
-        box.label(text='Çok kenarlı / eğri kapalı açıklıklar')
-        box.label(text='Uygulamadan önce açıklığı kontrol edin.')
-        box.prop(settings,'patch_max_size')
-        op=box.operator('kmtr.repair_preview',text='Listedeki açıklığı önizle')
-        op.action='BUILD';op.scope='ACTIVE'
-        op=box.operator('kmtr.repair_preview',text='Tüm uygun açıklıkları önizle')
-        op.action='BUILD';op.scope='ALL'
-        proposal=_runtime['repair_preview']
-        if proposal and proposal['mesh']==_mesh_key(obj.data):
-            count=sum(len(p['triangles']) for p in proposal['patches'])
-            box.label(text=str(len(proposal['patches']))+' yama · '+str(count)+' önerilen üçgen')
-            box.label(text='Henüz geometri değiştirilmedi.')
-            box.prop(settings,'patch_opacity',slider=True)
-            row=box.row(align=True)
-            row.operator('kmtr.repair_preview',text='Uygula',icon='CHECKMARK').action='APPLY'
-            row.operator('kmtr.repair_preview',text='İptal',icon='X').action='CANCEL'
-            for reason,count in proposal['skipped'].items():box.label(text=str(count)+' atlandı: '+reason)
-        if _runtime['patch_error']:box.label(text=_runtime['patch_error'],icon='ERROR')
-        box.label(text='Uygula gerçek yüz ekler. Ctrl+Z: geri al.')
-        box = layout.box()
-        box.label(text='Sıkı küçük delik modu · Ctrl+Z')
-        box.label(text='Yalnız uygun 3–4 kenarlı açıklıklar.')
-        box.prop(settings, 'repair_max_size')
-        op = box.operator('kmtr.hole_repair', text='Onarılabilirleri kontrol et')
-        op.preview_only = True; op.scope = 'ALL'
-        op = box.operator('kmtr.hole_repair', text='Uygun küçük delikleri kapat')
-        op.preview_only = False; op.scope = 'ALL'
-        if settings.hole_items:
-            op = box.operator('kmtr.hole_repair', text='Yalnız listedeki açıklığı onar')
-            op.preview_only = False; op.scope = 'ACTIVE'
-        box.label(text='Bu düğmeler gerçek yüz oluşturur.')
-        summary = _runtime['repair_report']
-        if summary and summary['mesh'] == _mesh_key(obj.data):
-            box.label(text=str(summary['eligible'])+' uygun · '+str(summary['filled'])+' yüz eklendi')
-            for reason, count in summary['skipped'].items():
-                box.label(text=str(count)+' atlandı: '+reason)
-        box = layout.box()
-        box.label(text='Yalnız seçili noktaları birleştir')
-        box.prop(settings, 'merge_distance')
-        box.prop(settings, 'merge_connected_only')
-        box.operator('kmtr.merge_selected')
-        box.label(text='Gerçek geometri değişir. Ctrl+Z: geri al.')
-        if _runtime['hole_error']:
-            layout.label(text=_runtime['hole_error'], icon='ERROR')
+def _draw_openings(layout,context,obj,bm,s):
+    layout.prop(s,'hole_active_material_only')
+    layout.operator('kmtr.hole_scan',text='Eksik yüz / açıklık tara',icon='VIEWZOOM')
+    report=_hole_report(obj,bm)
+    if report is None:
+        if _runtime['hole_scan']:layout.label(text='Geometri değişti; tekrar tarayın.',icon='INFO')
+        return
+    layout.label(text=str(len(report['regions']))+' olası açıklık bulundu')
+    if report.get('ignored_count'):layout.label(text=str(report['ignored_count'])+' açıklık yoksayıldı',icon='HIDE_ON')
+    if _runtime['ignored_holes'].get(_mesh_key(obj.data),{}).get('regions'):
+        layout.operator('kmtr.hole_ignore',text='Yoksayılanları geri getir',icon='LOOP_BACK').action='RESTORE'
+    if s.hole_items:
+        layout.template_list('KMTR_UL_holes','',s,'hole_items',s,'hole_active_index',rows=4)
+        index=min(s.hole_active_index,len(s.hole_items)-1);item=s.hole_items[index]
+        layout.label(text=_t(item.kind)+' · '+str(item.edge_count)+' '+_t('kenar'))
+        layout.label(text='Malzeme: '+item.material_text)
+        row=layout.row(align=True)
+        op=row.operator('kmtr.hole_focus',text='Seç ve yaklaş',icon='VIEWZOOM');op.index=index
+        op=row.operator('kmtr.hole_ignore',text='Yoksay',icon='X');op.action='IGNORE';op.index=index
+    layout.prop(s,'hole_overlay')
+    layout.label(text='Her açıklık eksik yüz olmayabilir.',icon='INFO')
+    layout.separator()
+    layout.label(text='Önizlemeli onarım',icon='HIDE_OFF')
+    layout.prop(s,'patch_max_size')
+    op=layout.operator('kmtr.repair_preview',text='Listedeki açıklığı önizle');op.action='BUILD';op.scope='ACTIVE'
+    op=layout.operator('kmtr.repair_preview',text='Tüm uygun açıklıkları önizle');op.action='BUILD';op.scope='ALL'
+    proposal=_runtime['repair_preview']
+    if proposal and proposal['mesh']==_mesh_key(obj.data):
+        triangles=sum(len(p['triangles']) for p in proposal['patches'])
+        layout.label(text=str(len(proposal['patches']))+' yama · '+str(triangles)+' önerilen üçgen')
+        layout.label(text='Henüz geometri değiştirilmedi.')
+        layout.prop(s,'patch_opacity',slider=True)
+        row=layout.row(align=True)
+        apply=row.row();apply.enabled=bool(proposal['patches'])
+        apply.operator('kmtr.repair_preview',text='Uygula',icon='CHECKMARK').action='APPLY'
+        row.operator('kmtr.repair_preview',text='İptal',icon='X').action='CANCEL'
+        if proposal['skipped']:
+            details=_section(layout,'skip_reasons','Atlama nedenleri','INFO')
+            if details:
+                for reason,count in proposal['skipped'].items():
+                    details.label(text=str(count)+' · '+_t(reason))
+    if _runtime['patch_error']:layout.label(text=_t(_runtime['patch_error']),icon='ERROR')
+    layout.label(text='Uygula gerçek yüz ekler. Ctrl+Z: geri al.')
 
 
 class KMTR_PT_panel(bpy.types.Panel):
-    bl_label = 'Kolay Malzeme TR'
-    bl_idname = 'KMTR_PT_panel'
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-    bl_category = 'Kolay Malzeme'
+    bl_label='FacePilot'
+    bl_idname='KMTR_PT_panel'
+    bl_space_type='VIEW_3D'
+    bl_region_type='UI'
+    bl_category='FacePilot'
 
-    def draw(self, context):
-        layout = self.layout
-        settings = context.window_manager.kmtr_settings
-        layout.label(text='Karartma yalnızca ekrandadır.', icon='INFO')
-        layout.label(text='Malzeme ve dışa aktarım değişmez.')
+    def draw(self,context):
+        layout=_UILayout(self.layout);s=context.window_manager.kmtr_settings
+        layout.prop(s,'language',expand=True)
         if not _single_edit_mesh(context):
-            layout.separator()
-            layout.label(text='Tek bir mesh seçin, Tab ile')
-            layout.label(text='Düzenleme Modu’na geçin.')
-            _op(layout, 'kmtr.preview', 'Normal görünüme dön', mode='OFF')
+            layout.label(text='Tek bir mesh ile Düzenleme Modu’na geçin.',icon='INFO')
+            layout.operator('kmtr.preview',text='Normal görünüme dön',icon='HIDE_OFF').mode='OFF'
             return
-        obj, bm = _edit_mesh(context)
-        box = layout.box()
-        box.label(text='1 · Malzemeden seçim', icon='MATERIAL')
-        box.template_list('MATERIAL_UL_matslots', '', obj, 'material_slots', obj, 'active_material_index', rows=4)
-        row = box.row(align=True)
-        _op(row, 'kmtr.material_select', 'Seç', action='REPLACE')
-        _op(row, 'kmtr.material_select', '+ Ekle', action='ADD')
-        _op(row, 'kmtr.material_select', 'Seçimden çıkar', action='SUBTRACT')
-        box = layout.box()
-        box.label(text='Yalnız görünüm için malzeme rengi')
-        row = box.row(); row.scale_y = 1.25
-        _op(row, 'kmtr.material_color', 'Hepsine farklı rastgele renk', action='RANDOM_ALL', seed=-1)
-        box.label(text='Malzeme: ' + (obj.active_material.name if obj.active_material else '(seçilmedi)'))
-        box.prop(settings, 'material_preview_color')
-        box.prop(settings, 'material_preview_opacity', slider=True)
-        _op(box, 'kmtr.material_color', 'Bu malzemeyi önizlemede boya', action='APPLY')
-        _op(box, 'kmtr.material_color', 'Bu malzemenin rengini kaldır', action='CLEAR_ACTIVE')
-        _op(box, 'kmtr.material_color', 'Tüm önizleme renklerini temizle', action='CLEAR_ALL')
-        box.label(text='Gerçek renk değişmez; dışa aktarılmaz.')
-        box = layout.box()
-        box.label(text='Kırmızı işaretle → ana malzemeye taşı')
-        _op(box, 'kmtr.red_action', 'Seçilileri kırmızı işaretle', action='MARK_SELECTION')
-        _op(box, 'kmtr.red_action', 'Seçilileri kırmızıdan çıkar', action='UNMARK_SELECTION')
-        box.prop(settings, 'red_fill_opacity', slider=True)
-        box.prop(settings, 'red_mode')
-        box.label(text='Ctrl + sol tık: işaretle / kaldır')
-        box.label(text='Ctrl + Shift + sol tık: işareti sil')
-        stored = _runtime['red_marks']
-        count = len(stored['faces']) if stored and stored['mesh'] == _mesh_key(obj.data) else 0
-        box.label(text=str(count) + ' kırmızı yüz · renk geçicidir')
-        clear_row = box.row()
-        clear_row.scale_y = 1.25
-        clear_row.operator('kmtr.red_action', text='Clear — tüm kırmızıları iptal et', icon='X').action = 'CLEAR'
-        _op(box, 'kmtr.red_action', 'Kırmızıları 1. ana malzemeye taşı', action='TRANSFER')
-        if _runtime['red_error']:
-            box.label(text=_runtime['red_error'], icon='ERROR')
-        box = layout.box()
-        box.label(text='Malzemeden yüz çıkar / taşı')
-        box.label(text='Kaynak: ' + (obj.active_material.name if obj.active_material else '(boş yuva)'))
-        box.prop(settings, 'move_target')
-        _op(box, 'kmtr.remove_from_material', 'Seçili yüzleri malzemeden çıkar', target=settings.move_target)
-        box.label(text='Seçili yüzler hedefe taşınır. Ctrl+Z: geri al.')
-        box = layout.box()
-        box.label(text='Akıllı bölge seçimi')
-        box.prop(settings, 'smart_mode')
-        if settings.smart_mode != 'MATERIAL':
-            box.prop(settings, 'smart_angle')
-        _op(box, 'kmtr.smart_select', 'Akıllı seçim: bölgeye tıkla')
-        box.label(text='Shift: ekle · Ctrl: seçimden çıkar')
-        box = layout.box()
-        box.label(text='2 · Seçimi düzelt')
-        count = sum(f.select and not f.hide for f in bm.faces)
-        box.label(text=str(count) + ' yüz seçili')
-        row = box.row(align=True)
-        _op(row, 'kmtr.brush', 'Fırça +', action='ADD')
-        _op(row, 'kmtr.brush', 'Fırça −', action='SUB')
-        box.prop(settings, 'brush_radius', slider=True)
-        _op(box, 'kmtr.brush', 'Kutu seçimine dön', action='BOX')
-        row = box.row(align=True)
-        _op(row, 'kmtr.selection_action', 'Büyüt', action='GROW')
-        _op(row, 'kmtr.selection_action', 'Küçült', action='SHRINK')
-        row = box.row(align=True)
-        _op(row, 'kmtr.selection_action', 'Ters çevir', action='INVERT')
-        _op(row, 'kmtr.selection_action', 'Temizle', action='CLEAR')
-        row = box.row(align=True)
-        _op(row, 'kmtr.selection_memory', 'Seçimi sakla', action='STORE')
-        _op(row, 'kmtr.selection_memory', 'Geri çağır', action='RESTORE')
-        box = layout.box()
-        box.label(text='3 · Geçici siyah önizleme')
-        for text, mode in [('Seçileni karart', 'SELECTED'), ('Diğer yüzleri karart', 'OTHERS'),
-                           ('Bu malzemeyi karart', 'MATERIAL'), ('Diğer malzemeleri karart', 'OTHER_MATERIALS')]:
-            button = box.operator('kmtr.preview', text=text, depress=settings.preview_mode == mode)
-            button.mode = mode
-        box.prop(settings, 'opacity', slider=True)
-        _op(box, 'kmtr.preview', 'Normal görünüme dön', mode='OFF')
-        if _runtime['error']:
-            box.label(text=_runtime['error'], icon='ERROR')
-        box = layout.box()
-        box.label(text='4 · İnce çalışma için gizle')
-        row = box.row(align=True)
-        _op(row, 'kmtr.isolate', 'Diğerlerini gizle', action='HIDE')
-        _op(row, 'kmtr.isolate', 'Geri al', action='RESTORE')
-        _op(box, 'kmtr.isolate', 'Tüm gizlileri göster', action='REVEAL')
-        box = layout.box()
-        box.label(text='5 · Gerçek malzeme ataması')
-        _op(box, 'kmtr.assign_material', 'Seçime listedeki malzemeyi ata')
-        box.prop(settings, 'new_name')
-        _op(box, 'kmtr.new_material', 'Oluştur ve seçime ata')
-        box.label(text='Atama işlemleri Ctrl+Z ile geri alınır.')
+        obj,bm=_edit_mesh(context)
+        selected=sum(f.select and not f.hide for f in bm.faces);hidden=sum(f.hide for f in bm.faces)
+        status=layout.box()
+        row=status.row(align=True)
+        row.label(text=_t('Seçili')+': '+str(selected),icon='FACESEL')
+        row.label(text=_t('Gizli')+': '+str(hidden),icon='HIDE_ON')
+        status.label(text='Malzeme: '+(obj.active_material.name if obj.active_material else _t('(seçilmedi)')))
+        isolated=_isolation_layers(bm) is not None
+        row=status.row(align=True)
+        isolate=row.row();isolate.enabled=not isolated
+        isolate.operator('kmtr.isolate',text='Yalıt',icon='HIDE_ON').action='HIDE'
+        restore=row.row();restore.enabled=isolated
+        restore.operator('kmtr.isolate',text='Geri göster',icon='HIDE_OFF').action='RESTORE'
+
+        body=_section(layout,'selection','Seçim','RESTRICT_SELECT_OFF',closed=False)
+        if body:
+            body.template_list('MATERIAL_UL_matslots','',obj,'material_slots',obj,'active_material_index',rows=3)
+            row=body.row(align=True)
+            _op(row,'kmtr.material_select','Seç',action='REPLACE')
+            _op(row,'kmtr.material_select','Ekle',action='ADD')
+            _op(row,'kmtr.material_select','Çıkar',action='SUBTRACT')
+            row=body.row(align=True)
+            _op(row,'kmtr.brush','Fırça +',action='ADD');_op(row,'kmtr.brush','Fırça −',action='SUB')
+            body.prop(s,'brush_radius',slider=True)
+            body.operator('kmtr.brush',text='Kutu seçimine dön').action='BOX'
+            row=body.row(align=True)
+            _op(row,'kmtr.selection_action','Büyüt',action='GROW');_op(row,'kmtr.selection_action','Küçült',action='SHRINK')
+            row=body.row(align=True)
+            _op(row,'kmtr.selection_action','Ters çevir',action='INVERT');_op(row,'kmtr.selection_action','Temizle',action='CLEAR')
+            row=body.row(align=True)
+            _op(row,'kmtr.selection_memory','Seçimi sakla',action='STORE');_op(row,'kmtr.selection_memory','Geri çağır',action='RESTORE')
+            body.operator('kmtr.isolate',text='Tüm gizlileri göster').action='REVEAL'
+
+        body=_section(layout,'smart','Akıllı seçim','VIEWZOOM')
+        if body:
+            body.prop(s,'smart_mode')
+            if s.smart_mode!='MATERIAL':body.prop(s,'smart_angle')
+            body.operator('kmtr.smart_select',text='Bölgeye tıkla')
+            body.label(text='Shift: ekle · Ctrl: çıkar')
+
+        body=_section(layout,'visual','Görsel önizleme','SHADING_SOLID')
+        if body:
+            body.label(text='Renkler ve işaretler dışa aktarılmaz.',icon='INFO')
+            _op(body,'kmtr.material_color','Rastgele renkler',action='RANDOM_ALL',seed=-1)
+            body.prop(s,'material_preview_color');body.prop(s,'material_preview_opacity',slider=True)
+            _op(body,'kmtr.material_color','Bu malzemeye renk ver',action='APPLY')
+            _op(body,'kmtr.material_color','Rengi kaldır',action='CLEAR_ACTIVE')
+            _op(body,'kmtr.material_color','Renkleri temizle',action='CLEAR_ALL')
+            body.separator();body.prop(s,'preview_mode',text='Karartma modu')
+            body.prop(s,'opacity',slider=True)
+            body.operator('kmtr.preview',text='Normal görünüme dön',icon='LOOP_BACK').mode='OFF'
+            if _runtime['error']:body.label(text=_t(_runtime['error']),icon='ERROR')
+
+        body=_section(layout,'red','Kırmızı düzeltme','EDITMODE_HLT')
+        if body:
+            body.label(text='Geçici görünüm',icon='INFO')
+            _op(body,'kmtr.red_action','Seçilileri kırmızı işaretle',action='MARK_SELECTION')
+            _op(body,'kmtr.red_action','Seçilileri kırmızıdan çıkar',action='UNMARK_SELECTION')
+            body.prop(s,'red_fill_opacity',slider=True);body.prop(s,'red_mode')
+            body.label(text='Ctrl + sol tık: işaretle / kaldır');body.label(text='Ctrl + Shift + sol tık: işareti sil')
+            stored=_runtime['red_marks'];count=len(stored['faces']) if stored and stored['mesh']==_mesh_key(obj.data) else 0
+            body.label(text=str(count)+' kırmızı yüz · renk geçicidir')
+            _op(body,'kmtr.red_action','Clear — tüm kırmızıları iptal et',action='CLEAR')
+            body.separator();body.label(text='Gerçek atama',icon='MATERIAL')
+            _op(body,'kmtr.red_action','İşaretlileri 1. yuvaya taşı',action='TRANSFER')
+            if _runtime['red_error']:body.label(text=_t(_runtime['red_error']),icon='ERROR')
+
+        body=_section(layout,'assignment','Malzeme atama','MATERIAL')
+        if body:
+            body.label(text='Gerçek atama · Ctrl+Z: geri al',icon='INFO')
+            body.prop(s,'move_target')
+            _op(body,'kmtr.remove_from_material','Seçili yüzleri malzemeden çıkar',target=s.move_target)
+            body.operator('kmtr.assign_material',text='Seçime listedeki malzemeyi ata')
+            body.separator();body.prop(s,'new_name',text='Yeni malzeme')
+            body.operator('kmtr.new_material',text='Oluştur ve seçime ata')
+
+        body=_section(layout,'openings','Açıklıklar ve onarım','MOD_TRIANGULATE')
+        if body:_draw_openings(body,context,obj,bm,s)
+
+        body=_section(layout,'advanced','Gelişmiş onarım','TOOL_SETTINGS')
+        if body:
+            body.label(text='Gerçek geometri değişir. Ctrl+Z: geri al.',icon='INFO')
+            body.label(text='Sıkı küçük delik modu')
+            body.label(text='Yalnız uygun 3–4 kenarlı açıklıklar.')
+            body.prop(s,'repair_max_size')
+            _op(body,'kmtr.hole_repair','Onarılabilirleri kontrol et',preview_only=True,scope='ALL')
+            _op(body,'kmtr.hole_repair','Uygun küçük delikleri kapat',preview_only=False,scope='ALL')
+            _op(body,'kmtr.hole_repair','Yalnız listedeki açıklığı onar',preview_only=False,scope='ACTIVE')
+            summary=_runtime['repair_report']
+            if summary and summary['mesh']==_mesh_key(obj.data):
+                body.label(text=_t('Uygun')+': '+str(summary['eligible'])+' · '+_t('Eklenen yüz')+': '+str(summary['filled']))
+                for reason,count in summary['skipped'].items():body.label(text=str(count)+' · '+_t(reason))
+            body.separator();body.label(text='Seçili noktaları birleştir')
+            body.prop(s,'merge_distance');body.prop(s,'merge_connected_only')
+            body.operator('kmtr.merge_selected',text='Seçili noktaları mesafeyle birleştir')
+
 
 
 def clear_runtime():
@@ -2080,6 +2311,8 @@ def _on_load_post(*args):
     _stop_preview()
     settings = getattr(bpy.context.window_manager, 'kmtr_settings', None)
     if settings:
+        addon=bpy.context.preferences.addons.get(__name__)
+        if addon:settings.language=addon.preferences.language
         settings.preview_mode = 'OFF'
 
 
@@ -2091,18 +2324,20 @@ def _on_update(*args):
     _runtime['hole_dirty'] = True
 
 
-CLASSES = (KMTR_HoleItem, KMTR_Settings, KMTR_OT_hole_scan, KMTR_OT_hole_ignore, KMTR_OT_hole_focus, KMTR_OT_repair_preview, KMTR_OT_hole_repair, KMTR_OT_merge_selected,
+CLASSES = (KMTR_Preferences, KMTR_HoleItem, KMTR_Settings, KMTR_OT_hole_scan, KMTR_OT_hole_ignore, KMTR_OT_hole_focus, KMTR_OT_repair_preview, KMTR_OT_hole_repair, KMTR_OT_merge_selected,
            KMTR_OT_material_select, KMTR_OT_material_color, KMTR_OT_remove_from_material, KMTR_OT_smart_select,
            KMTR_OT_red_action, KMTR_OT_red_paint,
            KMTR_OT_selection_action, KMTR_OT_brush,
            KMTR_OT_selection_memory, KMTR_OT_isolate, KMTR_OT_preview,
-           KMTR_OT_assign_material, KMTR_OT_new_material, KMTR_UL_holes, KMTR_PT_holes, KMTR_PT_panel)
+           KMTR_OT_assign_material, KMTR_OT_new_material, KMTR_UL_holes, KMTR_PT_panel)
 
 
 def register():
     for cls in CLASSES:
         bpy.utils.register_class(cls)
     bpy.types.WindowManager.kmtr_settings = PointerProperty(type=KMTR_Settings, options={'SKIP_SAVE'})
+    addon=bpy.context.preferences.addons.get(__name__)
+    if addon:bpy.context.window_manager.kmtr_settings.language=addon.preferences.language
     keyconfig = bpy.context.window_manager.keyconfigs.addon
     if keyconfig:
         names = ['3D View', '3D View Tool: Select Box', '3D View Tool: Select Circle',
