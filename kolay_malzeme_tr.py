@@ -1,7 +1,7 @@
 bl_info = {
     'name': 'Kolay Malzeme TR',
     'author': 'Codex',
-    'version': (1, 9, 0),
+    'version': (1, 10, 0),
     'blender': (4, 2, 0),
     'location': '3D View > N > FacePilot',
     'description': 'Türkçe yüz seçimi, malzeme atama ve dışa aktarılmayan karartma önizlemesi',
@@ -25,6 +25,7 @@ _runtime = {
     'geometry_dirty': True, 'gpu_dirty': True, 'error': '',
     'material_colors': {}, 'color_positions': [], 'color_batches': [],
     'target_items': {},
+    'material_visibility_rows': None,
     'red_marks': None, 'red_handler': None, 'red_shader': None, 'red_batch': None,
     'red_positions': [], 'red_signature': None, 'red_dirty': True, 'red_error': '',
     'red_geometry_dirty': True,
@@ -49,6 +50,11 @@ PREVIEW_ITEMS = [
 
 
 UI_EN = {
+    'Göster':'Show','Gizle':'Hide','Göster / gizle':'Show / hide','Malzemeyi göster/gizle':'Show/hide material',
+    'Malzeme gizlendi':'Material hidden','Malzeme gösterildi':'Material shown',
+    'Geçerli bir malzeme yuvası seçin':'Choose a valid material slot',
+    'Bu malzemeye atanmış yüz yok':'No faces are assigned to this material',
+    'Göz simgesi: malzemeyi göster/gizle':'Eye icon: show/hide material','Görünür':'Visible',
     'Seçim':'Selection', 'Akıllı seçim':'Smart selection', 'Görsel önizleme':'Visual preview',
     'Kırmızı düzeltme':'Red corrections', 'Malzeme atama':'Material assignment',
     'Açıklıklar ve onarım':'Openings & repair', 'Gelişmiş onarım':'Advanced repair',
@@ -191,6 +197,7 @@ UI_EN = {
 }
 
 OP_HELP_EN={
+    'kmtr.material_visibility':'Show or hide faces using this material in the current mesh. Other materials stay unchanged. An open eye hides all; a closed eye shows all. Ctrl+Z: undo.',
     'kmtr.hole_scan':'List connected open boundary edges. Intentional openings can appear; no geometry or UV changes.',
     'kmtr.hole_ignore':'Exclude an opening from the list, cyan overlay and repairs. Restore ignored openings brings it back.',
     'kmtr.hole_focus':'Select the listed boundary edges and frame them without adding faces.',
@@ -1571,6 +1578,52 @@ class KMTR_OT_merge_selected(KMTR_EditOperator, bpy.types.Operator):
         return {'FINISHED'}
 
 
+def _material_slot_group(obj,index):
+    material=obj.material_slots[index].material
+    return {i for i,slot in enumerate(obj.material_slots) if slot.material==material} if material else {index}
+
+
+def material_visibility_stats(obj,bm):
+    keys=[('MAT',_mesh_key(slot.material)) if slot.material else ('EMPTY',i)
+          for i,slot in enumerate(obj.material_slots)]
+    counts={key:[0,0] for key in keys}
+    for face in bm.faces:
+        if 0<=face.material_index<len(keys):
+            values=counts[keys[face.material_index]]
+            values[0]+=not face.hide;values[1]+=1
+    return {i:tuple(counts[key]) for i,key in enumerate(keys)}
+
+
+class KMTR_OT_material_visibility(KMTR_EditOperator,bpy.types.Operator):
+    bl_idname='kmtr.material_visibility'
+    bl_label='Malzemeyi göster/gizle'
+    bl_description='Bu malzemenin yüzlerini göster veya gizle. Diğer malzemeler değişmez. Açık göz gizler, kapalı göz gösterir. Ctrl+Z: geri al'
+    bl_options={'REGISTER','UNDO'}
+    action: EnumProperty(items=_localized_items([('TOGGLE','Göster / gizle',''),('SHOW','Göster',''),('HIDE','Gizle','')]),default=0)
+    index: IntProperty(default=-1,min=-1,options={'HIDDEN','SKIP_SAVE'})
+
+    def execute(self,context):
+        obj,bm=_edit_mesh(context)
+        index=obj.active_material_index if self.index<0 else self.index
+        if not 0<=index<len(obj.material_slots):
+            self.report({'WARNING'},_t('Geçerli bir malzeme yuvası seçin',context));return {'CANCELLED'}
+        slots=_material_slot_group(obj,index)
+        faces=[f for f in bm.faces if f.material_index in slots]
+        if not faces:
+            self.report({'WARNING'},_t('Bu malzemeye atanmış yüz yok',context));return {'CANCELLED'}
+        hide=self.action=='HIDE' or (self.action=='TOGGLE' and any(not f.hide for f in faces))
+        changed=[f for f in faces if f.hide!=hide]
+        if changed:
+            clear_repair_preview()
+            for face in changed:
+                face.hide_set(hide)
+                if not hide:face.select=False
+            _runtime['hole_dirty']=True;_runtime['red_geometry_dirty']=True
+            _flush(obj)
+        self.report({'INFO'},_t('Malzeme gizlendi' if hide else 'Malzeme gösterildi',context))
+        return {'FINISHED'}
+
+
 class KMTR_OT_material_select(KMTR_EditOperator, bpy.types.Operator):
     bl_idname = 'kmtr.material_select'
     bl_label = 'Malzemeden yüz seç'
@@ -2092,6 +2145,20 @@ def _section(layout,key,title,icon='NONE',closed=True):
     return _UILayout(body) if body else None
 
 
+class KMTR_UL_materials(bpy.types.UIList):
+    def draw_item(self,context,layout,data,item,icon,active_data,active_propname,index):
+        split=layout.split(factor=.66,align=True)
+        split.label(text=item.material.name if item.material else _t('(boş yuva)'),icon='MATERIAL',translate=False)
+        tools=split.row(align=True)
+        cache=_runtime['material_visibility_rows']
+        stats=cache['rows'].get(index,(0,0)) if cache and cache['object']==_mesh_key(data) else (0,0)
+        visible,total=stats
+        tools.label(text=str(visible),translate=False)
+        button=tools.row(align=True);button.enabled=bool(total)
+        op=button.operator('kmtr.material_visibility',text='',icon='HIDE_OFF' if visible else 'HIDE_ON')
+        op.action='TOGGLE';op.index=index
+
+
 class KMTR_UL_holes(bpy.types.UIList):
     def draw_item(self,context,layout,data,item,icon,active_data,active_propname,index):
         row=_UILayout(layout).row(align=True)
@@ -2176,7 +2243,14 @@ class KMTR_PT_panel(bpy.types.Panel):
 
         body=_section(layout,'selection','Seçim','RESTRICT_SELECT_OFF',closed=False)
         if body:
-            body.template_list('MATERIAL_UL_matslots','',obj,'material_slots',obj,'active_material_index',rows=3)
+            _runtime['material_visibility_rows']={'object':_mesh_key(obj),'rows':material_visibility_stats(obj,bm)}
+            body.template_list('KMTR_UL_materials','',obj,'material_slots',obj,'active_material_index',rows=5)
+            visible,total=_runtime['material_visibility_rows']['rows'].get(obj.active_material_index,(0,0))
+            body.label(text=_t('Görünür')+': '+str(visible)+' / '+str(total))
+            body.label(text='Göz simgesi: malzemeyi göster/gizle')
+            row=body.row(align=True)
+            _op(row,'kmtr.material_visibility','Göster',action='SHOW',index=-1)
+            _op(row,'kmtr.material_visibility','Gizle',action='HIDE',index=-1)
             row=body.row(align=True)
             _op(row,'kmtr.material_select','Seç',action='REPLACE')
             _op(row,'kmtr.material_select','Ekle',action='ADD')
@@ -2259,6 +2333,7 @@ class KMTR_PT_panel(bpy.types.Panel):
 
 
 def clear_runtime():
+    _runtime['material_visibility_rows']=None
     _runtime['ignored_holes'].clear()
     clear_repair_preview()
     _stop_hole_overlay()
@@ -2325,11 +2400,11 @@ def _on_update(*args):
 
 
 CLASSES = (KMTR_Preferences, KMTR_HoleItem, KMTR_Settings, KMTR_OT_hole_scan, KMTR_OT_hole_ignore, KMTR_OT_hole_focus, KMTR_OT_repair_preview, KMTR_OT_hole_repair, KMTR_OT_merge_selected,
-           KMTR_OT_material_select, KMTR_OT_material_color, KMTR_OT_remove_from_material, KMTR_OT_smart_select,
+           KMTR_OT_material_visibility, KMTR_OT_material_select, KMTR_OT_material_color, KMTR_OT_remove_from_material, KMTR_OT_smart_select,
            KMTR_OT_red_action, KMTR_OT_red_paint,
            KMTR_OT_selection_action, KMTR_OT_brush,
            KMTR_OT_selection_memory, KMTR_OT_isolate, KMTR_OT_preview,
-           KMTR_OT_assign_material, KMTR_OT_new_material, KMTR_UL_holes, KMTR_PT_panel)
+           KMTR_OT_assign_material, KMTR_OT_new_material, KMTR_UL_materials, KMTR_UL_holes, KMTR_PT_panel)
 
 
 def register():

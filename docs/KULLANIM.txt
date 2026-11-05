@@ -1,4 +1,16 @@
-KOLAY MALZEME TR / FACEPILOT — 1.9.0
+KOLAY MALZEME TR / FACEPILOT — 1.10.0
+
+YENİ: MALZEMELERİ TEK TEK GÖSTER / GİZLE
+Seçim bölümünde her malzemenin yanında göz simgesi ve görünür yüz sayısı
+vardır. Etkin malzemenin görünür/toplam sayısı listenin altında gösterilir.
+Açık göze basınca o malzeme gizlenir, kapalı göze basınca
+gösterilir. Kısmen görünürse ilk tıklama tamamını gizler. Listenin altındaki
+Göster / Gizle, etkin malzemeyi kontrol eder. Diğer malzemeler değişmez.
+Aynı malzemeye bağlı yinelenen yuvalar birlikte kontrol edilir. Gösterme
+yeni yüz seçmez; gizlenen yüzün seçimi normal şekilde kalkar. Ctrl+Z geri
+alır. Geometri, UV veya malzeme ataması değişmez. Mevcut izolasyondaki Geri
+göster, izolasyon öncesi duruma döner. Görünürlük değişince bekleyen mor
+yama temizlenir; onarımdan önce yeniden önizleyin.
 
 YENİ: DÜZENLİ PANEL VE TÜRKÇE / ENGLISH SEÇENEĞİ
 Panel artık N > FacePilot sekmesindedir. Üstteki Türkçe / English

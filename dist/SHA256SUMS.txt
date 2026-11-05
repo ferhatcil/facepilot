@@ -1,2 +1,2 @@
-8a07de1aa4e4ef076c54e581f470e6308abf325d81409ce1f7901993dac18e55  kolay_malzeme_tr.py
-8bac379a68d90608ae5d9a4f23b4f363bd78ec54ea6760d6e5d8ffce522a3739  dist/FacePilot-1.9.0.zip
+1e377ceec6730095b5745a5be2fe9f0a767eb10d544b1819297e0548f4acbd67  kolay_malzeme_tr.py
+4cae5147e0ebd123fbade8dd28a3f93d94701a0de2c58750c8d876d7a3e76130  dist/FacePilot-1.10.0.zip

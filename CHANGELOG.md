@@ -1,5 +1,15 @@
 # Changelog / Sürüm geçmişi
 
+## 1.10.0 · Per-material visibility
+
+- Material row eye toggles and visible/total counts; active-material Show/Hide buttons.
+- Other material groups stay unchanged; duplicate references share visibility.
+- Native undo, existing isolation restore, no geometry/UV/assignment edits.
+- Actual visibility changes clear pending repair previews; invalid/no-op commands preserve them.
+- 65 Blender tests: 64 passed, 1 GUI-only skipped; TR/EN controls and guide.
+
+Malzeme satırında göz simgesi, görünür/toplam sayısı ve etkin malzeme için Göster/Gizle. Diğer malzemelere dokunmaz; Ctrl+Z ve mevcut izolasyonu geri getirme desteklenir.
+
 ## 1.9.0 · Compact interface & language choice
 
 - One FacePilot sidebar with native collapsible workflow groups and stable group IDs.

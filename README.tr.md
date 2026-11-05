@@ -10,7 +10,7 @@
 <p align="center">
   <a href="README.tr.md"><strong>Türkçe</strong></a> ·
   <a href="README.md"><strong>English</strong></a> ·
-  <a href="dist/FacePilot-1.9.0.zip">v1.9.0 indir</a> ·
+  <a href="dist/FacePilot-1.10.0.zip">v1.10.0 indir</a> ·
   <a href="docs/SHORTCUTS.md">Kısayollar</a> ·
   <a href="docs/DEVELOPMENT.md">Geliştirme ve testler</a>
 </p>
@@ -38,7 +38,7 @@ Projenin İngilizce adı **FacePilot**. Blender'daki eklenti adı **Kolay Malzem
 
 ## Bir dakikada kurulum
 
-1. [FacePilot-1.9.0.zip](dist/FacePilot-1.9.0.zip) dosyasını indir. GitHub'ın bütün repo ZIP'i yerine bu eklenti ZIP'ini kullan.
+1. [FacePilot-1.10.0.zip](dist/FacePilot-1.10.0.zip) dosyasını indir. GitHub'ın bütün repo ZIP'i yerine bu eklenti ZIP'ini kullan.
 2. Blender'da **Edit → Preferences → Add-ons → menü → Install from Disk** yolunu aç.
 3. ZIP'i seç ve **Kolay Malzeme TR** eklentisini etkinleştir. [kolay_malzeme_tr.py](kolay_malzeme_tr.py) dosyasını doğrudan kurmak da mümkün.
 4. **Tek bir mesh** seç, **Tab** ile Düzenleme Modu'na geç, 3B Görünüm'de **N → FacePilot** sekmesini aç.
@@ -74,6 +74,14 @@ Projenin İngilizce adı **FacePilot**. Blender'daki eklenti adı **Kolay Malzem
 ![Karakterin geri kalanını seçmeden yalnız kemeri seçme](docs/images/02-belt-selection.png)
 
 **Yüzü seçimden çıkarmak ile malzemeden çıkarmak farklıdır.** Gerçek atamayı değiştirmek için 5. bölümdeki taşıma araçlarını kullan.
+
+## 1.1. Malzemeyi Göster / Gizle · 1.10 yeniliği
+
+Her malzeme satırında **göz simgesi** ve görünür yüz sayısı bulunur. Etkin malzemenin **görünür / toplam** sayısı listenin altında gösterilir. Açık göze basınca o malzemenin yüzleri gizlenir; kapalı göze basınca gösterilir. Bazı yüzleri görünür, bazıları gizliyse ilk tıklama hepsini gizler. Listenin altındaki **Göster / Gizle** düğmeleri etkin malzemeye uygulanır.
+
+![Diğer malzemeler görünürken yalnız kemerin gizlenmesi](docs/images/24-material-hidden.png)
+
+Diğer malzemelerin görünürlüğü korunur. Gösterilen yüzler otomatik seçilmez; gizlenen yüzlerin seçimi Blender'ın normal davranışıyla kalkar. Aynı malzemeye bağlı yinelenen yuvalar birlikte kontrol edilir. Geometri, UV ve gerçek atama değişmez; yalnız düzenleme görünürlüğü değişir. **Ctrl+Z** geri alır. Mevcut izolasyonun **Geri göster** düğmesi hâlâ çalışır; gözle sonradan yaptığın değişiklikler dahil izolasyon öncesi görünürlüğü geri getirir. Görünürlük değişince bekleyen yama önizlemesi temizlenir; onarımdan önce yeniden önizle.
 
 ## 2. Akıllı seçimle bölgeye tıkla
 
@@ -257,11 +265,11 @@ Nokta birleştirmek ile eksik yüz kapatmak ayrı işlerdir. Birleştirme, doğr
 
 ## Testler ve dosyalar
 
-Blender 5.2.3 arka plan testinde **61 testin 60'ı geçti, yalnız GUI gerektiren 1 test atlandı**. Seçim, atama ve geri alma, önizlemenin dışa aktarım verilerini koruması, kırmızı işaretler, gizleme/undo, tarama, onarımda malzeme/normal/UV ve birleştirme geri alması denetlenir. Komut ve kapsam için [geliştirme rehberine](docs/DEVELOPMENT.md) bak.
+Blender 5.2.3 arka plan testinde **65 testin 64'ü geçti, yalnız GUI gerektiren 1 test atlandı**. Seçim, atama ve geri alma, önizlemenin dışa aktarım verilerini koruması, kırmızı işaretler, gizleme/undo, tarama, onarımda malzeme/normal/UV ve birleştirme geri alması denetlenir. Komut ve kapsam için [geliştirme rehberine](docs/DEVELOPMENT.md) bak.
 
 ```text
 kolay_malzeme_tr.py         Eklenti kaynağı; sabit modül adı
-dist/FacePilot-1.9.0.zip    Kurulabilir tek dosyalı eklenti
+dist/FacePilot-1.10.0.zip    Kurulabilir tek dosyalı eklenti
 README.md / README.tr.md   Tam İngilizce / Türkçe rehberler
 docs/images/              Gerçek Blender ekran görüntüleri
 docs/brand/               FacePilot logo dosyaları

@@ -105,6 +105,60 @@ class AddonTests(unittest.TestCase):
         self.assertEqual(self.selected(), {1})
         self.assertTrue(self.bm.faces[3].hide)
 
+    def test_material_visibility_toggle_preserves_other_materials_and_export_data(self):
+        self.assertTrue(hasattr(self.addon,'KMTR_OT_material_visibility'),'Material visibility tool is missing')
+        before=self.fingerprint();self.obj.active_material_index=1
+        self.assertEqual(bpy.ops.kmtr.material_visibility(action='TOGGLE',index=0),{'FINISHED'})
+        self.assertEqual([f.hide for f in self.bm.faces],[True,False,True,True])
+        self.assertEqual(self.selected(),{1});self.assertEqual(self.obj.active_material_index,1)
+        self.assertEqual(bpy.ops.kmtr.material_visibility(action='TOGGLE',index=0),{'FINISHED'})
+        self.assertEqual([f.hide for f in self.bm.faces],[False,False,False,True])
+        self.assertEqual(self.selected(),{1});self.assertEqual(self.fingerprint(),before)
+
+    def test_material_visibility_show_mixed_material_and_duplicate_slots(self):
+        self.assertTrue(hasattr(self.addon,'KMTR_OT_material_visibility'),'Material visibility tool is missing')
+        self.obj.data.materials.append(self.obj.data.materials[0])
+        self.bm.faces[2].material_index=2;bmesh.update_edit_mesh(self.obj.data)
+        self.assertEqual(bpy.ops.kmtr.material_visibility(action='HIDE',index=2),{'FINISHED'})
+        self.assertTrue(self.bm.faces[0].hide and self.bm.faces[2].hide)
+        stats=self.addon.material_visibility_stats(self.obj,self.bm)
+        self.assertEqual(stats[0],stats[2]);self.assertEqual(stats[0],(0,2))
+        self.assertEqual(bpy.ops.kmtr.material_visibility(action='SHOW',index=1),{'FINISHED'})
+        self.assertFalse(self.bm.faces[1].hide or self.bm.faces[3].hide)
+        self.assertTrue(self.bm.faces[0].hide and self.bm.faces[2].hide)
+        self.assertFalse(self.bm.faces[3].select)
+
+    def test_material_visibility_shared_edges_and_undo(self):
+        self.assertTrue(hasattr(self.addon,'KMTR_OT_material_visibility'),'Material visibility tool is missing')
+        bmesh.ops.delete(self.bm,geom=list(self.bm.verts),context='VERTS')
+        bmesh.ops.create_cube(self.bm,size=1);self.bm.faces.ensure_lookup_table()
+        for f in self.bm.faces:f.material_index=1
+        self.bm.faces[0].material_index=0;self.select(set(range(6)))
+        bpy.ops.ed.undo_push(message='Before material hide')
+        bpy.ops.kmtr.material_visibility(action='HIDE',index=0)
+        self.assertTrue(self.bm.faces[0].hide);self.assertFalse(self.bm.faces[0].select)
+        self.assertTrue(all(not f.hide and f.select for f in list(self.bm.faces)[1:]))
+        bpy.ops.ed.undo_push(message='After material hide');self.undo_refresh()
+        self.assertTrue(all(not f.hide for f in self.bm.faces))
+        self.assertEqual(self.selected(),set(range(6)))
+
+    def test_material_visibility_invalidation_noop_and_isolation_restore(self):
+        self.assertTrue(hasattr(self.addon,'KMTR_OT_material_visibility'),'Material visibility tool is missing')
+        self.make_curved_hex_hole();bpy.ops.kmtr.repair_preview(action='BUILD',scope='ALL')
+        plan=self.addon._runtime['repair_preview']
+        bpy.ops.kmtr.material_visibility(action='SHOW',index=1)
+        self.assertIs(self.addon._runtime['repair_preview'],plan)
+        self.assertEqual(bpy.ops.kmtr.material_visibility(action='HIDE',index=999),{'CANCELLED'})
+        self.assertIs(self.addon._runtime['repair_preview'],plan)
+        bpy.ops.kmtr.material_visibility(action='HIDE',index=1)
+        self.assertIsNone(self.addon._runtime['repair_preview'])
+        bpy.ops.kmtr.material_visibility(action='SHOW',index=1)
+        self.select({0});bpy.ops.kmtr.isolate(action='HIDE')
+        bpy.ops.kmtr.material_visibility(action='SHOW',index=1)
+        self.assertTrue(self.addon._isolation_layers(self.bm))
+        bpy.ops.kmtr.isolate(action='RESTORE')
+        self.assertTrue(all(not f.hide for f in self.bm.faces))
+
     def test_invert_and_clear_visible_faces_only(self):
         self.select({0})
         bpy.ops.kmtr.selection_action(action='INVERT')

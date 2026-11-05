@@ -10,7 +10,7 @@
 <p align="center">
   <a href="README.md"><strong>English</strong></a> ·
   <a href="README.tr.md"><strong>Türkçe</strong></a> ·
-  <a href="dist/FacePilot-1.9.0.zip">Download v1.9.0</a> ·
+  <a href="dist/FacePilot-1.10.0.zip">Download v1.10.0</a> ·
   <a href="docs/SHORTCUTS.md">Shortcut reference</a> ·
   <a href="docs/DEVELOPMENT.md">Development & tests</a>
 </p>
@@ -38,7 +38,7 @@ The project name is **FacePilot**. The installed add-on retains the name **Kolay
 
 ## Install in a minute
 
-1. Download [FacePilot-1.9.0.zip](dist/FacePilot-1.9.0.zip). Use the add-on ZIP, rather than GitHub's whole-repository ZIP.
+1. Download [FacePilot-1.10.0.zip](dist/FacePilot-1.10.0.zip). Use the add-on ZIP, rather than GitHub's whole-repository ZIP.
 2. In Blender, open **Edit → Preferences → Add-ons → menu → Install from Disk**.
 3. Choose the ZIP and enable **Kolay Malzeme TR**. Installing [kolay_malzeme_tr.py](kolay_malzeme_tr.py) directly also works.
 4. Select **one mesh**, press **Tab** for Edit Mode, then **N → FacePilot** in the 3D Viewport.
@@ -81,6 +81,14 @@ Choose a material in **Seçim**, for example `M_Kemer` (belt), then use:
 ![The belt selected without selecting the rest of the character](docs/images/02-belt-selection.png)
 
 **Deselecting a face and removing it from a material are different actions.** To change its actual assignment, use the transfer tools in section 5.
+
+## 1.1. Material Show / Hide · new in 1.10
+
+Each material row now has an **eye icon** and visible-face count. The active material's **visible / total** count appears below the list. Click an open eye to hide that material's faces; click a closed eye to reveal them. In a partially visible group, the eye hides all of it first. **Göster (Show)** and **Gizle (Hide)** below the list act on the active material.
+
+![The belt hidden while other materials stay visible](docs/images/24-material-hidden.png)
+
+Other materials keep their current visibility. Showing does not select newly revealed faces; hiding deselects hidden faces as Blender normally does. Duplicate slots referencing the same material share one visibility state. This changes edit-mesh visibility, not geometry, UVs or material assignments. **Ctrl+Z** undoes it. Existing isolation can still be restored with **Geri göster (Restore)**; that restores the pre-isolation visibility, including any subsequent eye-button changes. A visibility change clears pending patch previews; rebuild before repair.
 
 ## 2. Pick a region with Smart Selection
 
@@ -264,11 +272,11 @@ Welding points and filling a missing face solve different problems. A weld does 
 
 ## Quality & project files
 
-The Blender 5.2.3 background suite currently reports **61 tests: 60 passed, 1 GUI-only test skipped**. It covers selection, material transfer/undo, preview export invariance, red-mark lifecycle, isolation/undo, boundary scanning, repair/material/normal/UV behavior and merge undo. See [development instructions](docs/DEVELOPMENT.md) for the exact command and the limits of this evidence.
+The Blender 5.2.3 background suite currently reports **65 tests: 64 passed, 1 GUI-only test skipped**. It covers selection, material transfer/undo, preview export invariance, red-mark lifecycle, isolation/undo, boundary scanning, repair/material/normal/UV behavior and merge undo. See [development instructions](docs/DEVELOPMENT.md) for the exact command and the limits of this evidence.
 
 ```text
 kolay_malzeme_tr.py         Add-on source; stable module name
-dist/FacePilot-1.9.0.zip    Installable single-file add-on
+dist/FacePilot-1.10.0.zip    Installable single-file add-on
 README.md / README.tr.md   Complete English / Turkish guides
 docs/images/              Actual Blender screenshots
 docs/brand/               FacePilot logo artwork
