@@ -1,0 +1,243 @@
+KOLAY MALZEME TR — 1.6.0
+
+YENİ: TÜM MALZEMELERE TEK TIKLA FARKLI RASTGELE RENK
+N > Kolay Malzeme > “Yalnız görünüm için malzeme rengi” bölümünde
+“Hepsine farklı rastgele renk” düğmesine basın. Etkin mesh üzerindeki
+her farklı malzeme ayrı renk alır; yüzleri tek tek seçmeniz gerekmez.
+Aynı malzemenin tüm yüzleri aynı renkte görünür. Tekrar basınca renkler
+yenilenir. Siyah karartma kapanır; renk yoğunluğu ayarınız kullanılır.
+“Tüm önizleme renklerini temizle” veya “Normal görünüme dön” ile kaldırın.
+Yalnız geçici ekran önizlemesidir; gerçek malzemeler ve Substance'a
+gidecek veriler değişmez.
+
+YENİ: KÜÇÜK DELİKLERİ KONTROLLÜ OTOMATİK KAPATMA
+1. Düzenleme Modu'nda “Eksik yüz / açıklık tara” düğmesine basın.
+2. “En büyük açıklık” sınırını kontrol edin (varsayılan 0,02 m).
+3. “Onarılabilirleri kontrol et” yalnız uygun/atlanan sayısını gösterir.
+4. “Uygun küçük delikleri kapat” uygun halkalara gerçek yüz ekler.
+   “Yalnız listedeki açıklığı onar” tek liste satırı için çalışır.
+5. Sonucu kontrol edin; Ctrl+Z işlemi geri alır.
+
+Yalnız küçük, görünür, dışbükey ve yeterince düz üçgen/dörtgen sınırlar
+değerlendirilir. Büyük, karışık malzemeli, dallanan, yönleri tutarsız veya
+mevcut yüzeyle çakışan bölgeler atlanır; nedenleri panelde listelenir.
+Yeni yüz komşu malzemeyi alır ve komşularına göre yönlendirilir. Mevcut
+yüzlerin UV'leri korunur; yeni yüzlerin UV'lerini boyamadan önce kontrol
+edin. Bu araç bir açıklığın tasarım gereği olup olmadığını bilemez.
+
+“Seçili noktaları mesafeyle birleştir” ayrı bir işlemdir. Yalnız seçili,
+görünür noktaları çok küçük eşikle birleştirir (varsayılan 0,00001 m).
+“Yalnız bağlantılı noktalar” varsayılan açıktır. Bu işlem delik kapatma
+yerine geçmez; aralarında yüz bulunmayan noktaları her durumda birleştirmek
+topolojiyi bozabilir. Sonucu Ctrl+Z ile geri alabilirsiniz.
+
+YENİ: OLASI EKSİK YÜZLERİ / AÇIKLIKLARI LİSTELEME
+Kolay Malzeme sekmesinin en üstünde “Olası eksik yüzler / açıklıklar”
+paneli bulunur. Tek mesh ile Düzenleme Modu'nda kullanılır.
+1. “Eksik yüz / açıklık tara” düğmesine basın.
+2. Liste, açık sınırları kenar sayısıyla gösterir; küçük kapalı halkalar
+   önce gelir. Altında ilgili malzemeyi ve sınır türünü görebilirsiniz.
+3. Satırdaki büyütece veya “Listedeki açıklığı seç ve yaklaş” düğmesine
+   basın. Sınır kenarları seçilir ve görünüm o bölgeye yaklaşır.
+4. “Yalnız listedeki malzemeyi tara” ile örneğin sadece M_Kemer'e ait
+   açıklıkları tarayabilirsiniz. Filtre değişince yeniden tarayın.
+5. “Açıklıkları turkuaz çizgilerle göster” yalnız geçici sınır çizgilerini
+   açar/kapatır; geometri veya malzeme oluşturmaz.
+
+Tarama, yalnız bir yüzün bağlı olduğu kenarları bağlantılı gruplara ayırır.
+Bu yüzden kıyafet ağzı, ayakkabı girişi gibi bilerek açık bırakılmış yerler
+de listelenebilir. Liste kesin hata kararı vermez; “olası açıklık” gösterir.
+Kapalı halka, açık sınır zinciri ve dallanan sınır ayrı adlandırılır.
+Gizlenen bir yüz yeni bir delik sayılmaz. Gizli sınır kenarları otomatik
+açılmaz; listede gizli kenar sayısı belirtilir. Yüzü görünür yapıp yeniden
+tarayabilirsiniz. Boşta duran kenarlar ve üçten fazla yüze bağlı sorunlar
+bu delik listesinin kapsamı dışındadır; sınır taraması bütün mesh hatalarını
+veya tamamen kayıp parçaları tespit ettiğini iddia etmez.
+
+Tarama seçim, geometri, UV ve malzeme atamasına dokunmaz. Listeden bir
+bölgeyi göstermek kenar seçim moduna geçer ve seçimi o sınırla değiştirir.
+Yüz ekleyip/silip birleştirdikten sonra tekrar tarayın; eski liste yanlış
+kenar seçmemek için geçersiz sayılır. Tarama tek başına delik kapatmaz;
+onarım yalnız yukarıdaki ayrı düğmelere basınca uygulanır.
+
+YENİ: MALZEME BAŞINA YALNIZ ÖNİZLEME RENGİ
+Düzenleme Modu'nda malzeme listesinin hemen altında
+“Yalnız görünüm için malzeme rengi” bölümü bulunur.
+1. Listeden istediğiniz malzemeyi seçin; örneğin M_Kemer.
+2. “Önizleme rengi” alanından rengi seçin.
+3. “Renk yoğunluğu” ile saydamlık/yoğunluğu ayarlayın.
+4. “Bu malzemeyi önizlemede boya” düğmesine basın.
+Başka bir malzemeye farklı renk verebilirsiniz; önceki renkler kalır.
+Örneğin kemer mavi, pantolon sarı olabilir.
+
+“Bu malzemenin rengini kaldır” yalnız listedeki malzemenin önizlemesini
+kaldırır. “Tüm önizleme renklerini temizle” hepsini kaldırır.
+“Normal görünüme dön” de tüm görünüm renklerini kaldırır.
+Renk seçiciyi değiştirdikten sonra yeni rengi uygulamak için tekrar
+“Bu malzemeyi önizlemede boya” düğmesine basın.
+
+Bu renkler yalnız GPU çalışma ekranı katmanıdır. Gerçek Base Color,
+shader düğümleri, malzeme yuvaları, yüz atamaları, UV'ler, vertex renkleri
+ve dokular değiştirilmez. Render, bake, FBX/OBJ/glTF veya Substance'a
+gitmez. Dosya yeniden açıldığında önizleme renkleri temizlenmiş olur.
+Seçime gerek yoktur: uygulama listedeki malzemenin görünür yüzlerini boyar.
+Siyah karartma açıksa karartılan yüzlerde siyah önceliklidir; renkleri
+tam görmek için önce karartmayı kapatıp renkleri uygulayın.
+
+CLEAR: TÜM KIRMIZILARI TEK SEFERDE İPTAL ET
+Kırmızı işaretleme bölümündeki “Clear — tüm kırmızıları iptal et”
+düğmesi bütün geçici kırmızı işaretleri kaldırır. Turuncu seçim,
+malzeme atamaları, geometri ve UV'ler değişmez.
+
+YENİ: AYNI CTRL HAREKETİYLE İŞARETİ KALDIRMA
+“Ctrl ile kırmızı işaretle” açıkken Ctrl+sol tık yüzün işaretini değiştirir:
+kırmızı değilse kırmızı yapar, kırmızıysa kırmızılığı kaldırır.
+Sürükleme ilk dokunduğunuz yüze göre tek yönde çalışır: kırmızı yüzle
+başlarsanız siler, işaretsiz yüzle başlarsanız ekler. Böylece aynı yüzün
+üstünden bir sürüklemede tekrar geçmek işareti titretmez.
+Ctrl+Shift+sol tık/sürükle her durumda işaret siler. Gerçek malzeme ve
+turuncu ana seçim değişmez; yalnız geçici kırmızı işaret değişir.
+
+YENİ: İÇİ SAYDAM KIRMIZI ÇERÇEVE VE NORMAL SEÇİM ARAÇLARI
+Kırmızı işaret artık dolu kırmızı yüz yerine belirgin kırmızı kenarlarla
+gösterilir. İç dolgu varsayılan olarak 0'dır; alttaki yüzey ve mesh çizgileri
+görünür kalır. İsterseniz “İç dolgu” sürgüsüyle hafif renk ekleyebilirsiniz.
+
+Normal seçim aracıyla çalışma:
+1. “Ctrl ile kırmızı işaretle” kapalı olsun; bu sürümün varsayılanıdır.
+2. Kutu (B), daire (C) veya kement gibi normal seçim aracıyla yüzleri seçin.
+3. “Seçilileri kırmızı işaretle” düğmesine basın.
+4. Yanlış işaretleri normal araçla seçip “Seçilileri kırmızıdan çıkar”ya basın.
+5. Hazır olduğunda “Kırmızıları 1. ana malzemeye taşı” düğmesini kullanın.
+İşaretler farklı seçim adımları arasında birikir. Normal seçim değiştirmek
+mevcut kırmızı işaretleri kaldırmaz. Seçmek veya işaretlemek malzeme atamaz.
+
+Önceki Ctrl ile boyama yöntemini isterseniz kutucuğu tekrar açabilirsiniz.
+
+YENİ: TURUNCU SEÇİMDEN KIRMIZI YÜZ AYIKLAMA
+1. Kemeri normal şekilde turuncu seçin; örneğin M_Kemer > Seç.
+2. “Ctrl ile kırmızı işaretle” kutusu açık olsun.
+3. Ctrl + sol tık veya sürükleme ile çıkarmak istediğiniz turuncu yüzleri
+   kırmızı işaretleyin. Turuncu ana seçim korunur.
+4. Ctrl + Shift + sol tık/sürükleme kırmızı işareti siler.
+   Esc, devam eden işaretleme çizgisini iptal eder.
+5. “Kırmızıları 1. ana malzemeye taşı” düğmesine basın.
+   Yalnız kırmızı yüzler mesh'in ilk malzeme yuvasına aktarılır ve
+   turuncu seçimden çıkarılır. Ctrl+Z malzeme atamasını geri alır.
+6. Aktarmadan vazgeçerseniz “Kırmızı işaretleri temizle”yi kullanın.
+
+Kırmızı işaret malzeme/vertex rengi değildir; render, bake veya
+Substance aktarımına gitmez. İşaretlemek gerçek atamayı değiştirmez.
+İşaretler yalnız bu Blender oturumunda tutulur. Topoloji değişirse eski
+işaretler güvenlik için temizlenir. Gizli veya turuncu seçili olmayan
+yüzler işaretlenmez. Aktarmadan önce gizlediğiniz kırmızı yüzleri görünür
+yapın. İşaretledikten sonra malzeme atamasını başka yoldan değiştirdiyseniz
+işaretleri temizleyip tekrar işaretleyin.
+
+Ctrl'nin Blender'daki normal davranışını kullanmak isterseniz
+“Ctrl ile kırmızı işaretle” kutusunu kapatın. Akıllı seçimin kendi tıklama
+adımında Ctrl hâlâ bölgeyi normal seçimden çıkarır; kırmızı işaretleme
+için akıllı seçim tıklamasını tamamladıktan sonra Ctrl kullanın.
+
+YENİ: SEÇİLİ YÜZLERİ MALZEMEDEN ÇIKARMA
+“Seçimden çıkar” yalnızca turuncu yüz seçimini azaltır; malzeme atamasına
+dokunmaz. Gerçekten bir malzemeden yüz çıkarmak için:
+1. Malzeme listesinde kaynak malzemeyi seçin; örneğin M_Kemer.
+2. Kemere yanlışlıkla dahil edilmiş yüzleri seçin.
+3. “Malzemeden yüz çıkar / taşı” bölümünde Hedef'i seçin.
+   Varsayılan “Ana malzeme (1. yuva)”dır; başka bir mevcut malzemeyi de
+   seçebilirsiniz. Örneğin pantolon yüzlerini M_Pant'a taşıyabilirsiniz.
+4. “Seçili yüzleri malzemeden çıkar” düğmesine basın.
+Yalnız seçili, görünür ve kaynak malzemeye ait yüzler taşınır. Kaynak
+malzeme silinmez, diğer yüzler değişmez. Ctrl+Z işlemi geri alır.
+Kaynak ile hedef aynıysa işlem yapılmaz.
+
+YENİ: AKILLI BÖLGE SEÇİMİ
+“Akıllı seçim: bölgeye tıkla” düğmesine basın, ardından modele tıklayın.
+Otomatik modda M_Kemer gibi önceden atanmış bir malzemeye tıklarsanız
+aynı malzemeye ait ayrı duran kemer ve toka parçaları birlikte seçilir.
+Ana malzemede veya atanmamış yüzlerde açı sınırına göre bağlı yüzey
+seçilir. Malzeme sınırı, UV dikişi, keskin kenar ve gizli yüzlerde durur.
+Shift ile tıklama seçime ekler; Ctrl ile tıklama seçimden çıkarır.
+Esc veya sağ tık iptal eder. Akıllı seçim malzeme ataması yapmaz.
+
+Yöntemler:
+Otomatik: Atanmış malzemeyi kullanır; ana malzemede yüzey sınırına geçer.
+Aynı malzeme: Tıklanan yüzün malzemesindeki tüm görünür yüzleri seçer.
+Yüzey sınırları: Bağlı yüzeyi, ayarladığınız açıya kadar seçer.
+Açı sınırını küçültmek seçimin keskin dönüşlerde daha erken durmasını,
+büyütmek daha geniş bir bağlı yüzeyi kapsamasını sağlar.
+Bu araç geometrik ve malzemeye dayalıdır; atanmış hatalı malzeme sınırını
+kendi başına düzeltmez ve etiketsiz bir mesh'te her zaman “kemer”i tanımaz.
+
+NEREDEN AÇILIR?
+3B Görünüm'de mesh'i seçin. Tab ile Düzenleme Modu'na geçin.
+N tuşuyla sağ yan paneli açın ve “Kolay Malzeme” sekmesine tıklayın.
+Araç tek bir mesh üzerinde çalışır; yüz seçim moduna geçer.
+
+ÖRNEK: KEMERİ DÜZELTMEK
+1. Panelde malzeme listesinden M_Kemer'i seçin.
+2. “Seç” düğmesi yalnız bu malzemenin görünen yüzlerini seçer.
+3. “Diğer yüzleri karart” ile seçim dışını siyah gösterin.
+4. “Fırça −” seçin, fazla seçilen bölgeyi sol tuşla boyayarak çıkarın.
+   “Fırça +” eksik yüzleri ekler. Boyutu paneldeki “Fırça boyutu” ile
+   değiştirin; “Kutu seçimine dön” düğmesi fırçadan çıkar.
+5. “Normal görünüme dön” karartmayı kaldırır.
+6. Gerekirse “Seçime listedeki malzemeyi ata” ile gerçek atamayı yapın.
+
+SEÇİM ARAÇLARI
+Seç: Önceki seçimin yerine etkin malzemenin yüzlerini seçer.
++ Ekle: Etkin malzemenin yüzlerini mevcut seçime ekler.
+− Çıkar: Etkin malzemenin yüzlerini mevcut seçimden çıkarır.
+Büyüt / Küçült: Yüz seçimini bir halka genişletir veya daraltır.
+Ters çevir: Görünen seçili/seçili olmayan yüzleri değiştirir.
+Temizle: Yüz seçimini kaldırır.
+Seçimi sakla / Geri çağır: Bu oturumda bir seçim yedeği tutar.
+Yüz silme/bölme gibi topoloji değişikliklerinde eski seçim uygulanmaz.
+
+KARARTMA VE SUBSTANCE PAINTER
+Siyah görüntü yalnızca 3B görünüm üzerine çizilen geçici bir katmandır.
+Gerçek malzemelerin Base Color değeri, shader düğümleri, UV'leri,
+dokuları, vertex renkleri veya yüz malzeme atamaları değiştirilmez.
+Karartma render'a, bake'e, FBX/OBJ/glTF çıktısına veya Substance'a gitmez.
+Karartma açıkken modeli dışa aktarmak siyah malzeme oluşturmaz.
+Dosya yeniden açıldığında önizleme kapalı başlar.
+
+Seçileni karart: Seçili yüzler siyah görünür.
+Diğer yüzleri karart: Seçili yüzler normal; diğer yüzler siyah görünür.
+Bu malzemeyi karart: Listedeki etkin malzemenin yüzlerini karartır.
+Diğer malzemeleri karart: Etkin malzeme normal; diğer malzemeler siyah.
+Karartma sürgüsü: Siyah katmanın opaklığını değiştirir.
+Normal görünüme dön: Geçici katmanı kaldırır.
+
+GİZLEME
+Diğerlerini gizle: Seçim dışını gizler, geometriyi silmez.
+Geri al: Bu işlemden önceki gizlilik durumunu geri getirir.
+Tüm gizlileri göster: Önceden gizlediğiniz yüzler dahil hepsini gösterir.
+Gizli yüzleri korumak için öncelikle “Geri al” düğmesini kullanın.
+Gizleme sırasında topolojiyi değiştirirseniz eski gizlilik haritası
+uygulanmaz; gerekirse “Tüm gizlileri göster” ile devam edin.
+Gizleme yedeği, Ctrl+Z ile birlikte geri alınabilen geçici tamsayı
+özniteliklerinde tutulur; “Geri al” bunları temizler. Bunlar renk veya
+malzeme verisi değildir. Siyah önizleme bu öznitelikleri bile oluşturmaz.
+
+GERÇEK MALZEME ATAMASI
+Yalnızca 5. bölümdeki atama düğmeleri gerçek malzeme atamasını değiştirir.
+“Oluştur ve seçime ata” yazdığınız adda malzeme oluşturur; aynı ad varsa
+mevcut malzemeyi kullanır. Atamalar Ctrl+Z ile geri alınabilir.
+Seçimden yüz çıkarmak, o yüze daha önce atanmış malzemeyi silmez.
+Atamayı düzeltmek için yanlış yüzleri seçip doğru malzemeyi ayrıca atayın.
+
+İNCE ÇALIŞMA
+X-Ray (Alt+Z) açıksa fırça arkadaki yüzleri de seçebilir.
+Yalnız görünen yüzlerle çalışmak için X-Ray'i kapatın.
+Önizleme, düzenlediğiniz temel mesh'in yüzlerini izler. Geometriyi
+değiştiren modifier'ların son yüzeyinde birebir kaplama garanti edilmez.
+Seçim hafızası dosyaya yazılmaz; Blender kapanınca veya eklenti
+kapatılınca temizlenir. Eklenti modeli otomatik kaydetmez.
+
+TEKRAR KURULUM
+Edit > Preferences > Add-ons > menü > Install from Disk ile
+Kolay_Malzeme_TR.zip dosyasını veya kolay_malzeme_tr.py dosyasını seçin.
+“Kolay Malzeme TR” eklentisini etkinleştirin.
+Blender 5.2.3 LTS üzerinde test edildi. Harici paket gerekmez.

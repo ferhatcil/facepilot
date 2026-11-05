@@ -1,0 +1,227 @@
+<p align="center">
+  <img src="docs/brand/facepilot-banner.png" alt="FacePilot — Seç, ayır, net gör." width="100%">
+</p>
+
+<p align="center">
+  <strong>Hassas yüz seçimi. Net malzeme sınırları. Kontrollü mesh onarımı.</strong><br>
+  Boyamaya geçmeden önce malzeme atamalarını düzenlemek için Blender yardımcın.
+</p>
+
+<p align="center">
+  <a href="README.tr.md"><strong>Türkçe</strong></a> ·
+  <a href="README.md"><strong>English</strong></a> ·
+  <a href="dist/FacePilot-1.6.0.zip">v1.6.0 indir</a> ·
+  <a href="docs/SHORTCUTS.md">Kısayollar</a> ·
+  <a href="docs/DEVELOPMENT.md">Geliştirme ve testler</a>
+</p>
+
+<p align="center"><code>Blender 5.2.3 LTS üzerinde test edildi</code> &nbsp; <code>Türkçe arayüz</code> &nbsp; <code>Ek paket gerektirmez</code></p>
+
+![Karakterde 16 malzemeye tek tıkla farklı önizleme renkleri](docs/images/01-material-colors.png)
+
+*Tek tık, 16 malzeme, 16 geçici renk. Gerçek shader'lar aynı kalır.*
+
+## FacePilot ne işe yarar?
+
+Kemeri seçtin ama birkaç pantolon yüzü de yanlışlıkla kemere atanmış. Bu yüzleri düzeltirken seçimini kaybetmeden, hangi parçanın hangi malzemeye ait olduğunu net görmek istiyorsun. FacePilot; malzemeden seçim, geçici renkler, kırmızı düzeltme işaretleri ve gerçek atama araçlarını aynı panelde toplar. Açık mesh sınırlarını listeler ve uygun küçük delikleri kapatabilir.
+
+Projenin İngilizce adı **FacePilot**. Blender'daki eklenti adı **Kolay Malzeme TR**, modül adı `kolay_malzeme_tr.py` ve Türkçe düğmeler korunur.
+
+| İş akışı | Araçlar | Modele etkisi |
+|---|---|---|
+| Seç ve düzelt | Malzemeden seçim, akıllı bölge, fırça +/−, büyüt/küçült, seçim hafızası | Yalnız seçim |
+| Net gör | Her malzemeye rastgele renk, tek malzeme rengi, dört siyah önizleme | Yalnız ekran |
+| Kırmızı işaretle | Saydam kırmızı çerçeveler, aç/kapat, sil, Clear | İşaretler geçici; **taşıma** gerçek atamadır |
+| Yeniden ata | İlk yuvaya veya seçilen hedefe taşı; mevcut/yeni malzeme ata | Gerçek malzeme ataması |
+| İncele | Açık sınır listesi, turkuaz çizgiler, bölgeye yaklaş | Tarama değişiklik yapmaz; odaklama seçimi/görünümü değiştirir |
+| Onar | Uygun küçük deliği kapat, seçili noktaları birleştir | Gerçek geometri; **Ctrl+Z** ile geri alınır |
+
+## Bir dakikada kurulum
+
+1. [FacePilot-1.6.0.zip](dist/FacePilot-1.6.0.zip) dosyasını indir. GitHub'ın bütün repo ZIP'i yerine bu eklenti ZIP'ini kullan.
+2. Blender'da **Edit → Preferences → Add-ons → menü → Install from Disk** yolunu aç.
+3. ZIP'i seç ve **Kolay Malzeme TR** eklentisini etkinleştir. [kolay_malzeme_tr.py](kolay_malzeme_tr.py) dosyasını doğrudan kurmak da mümkün.
+4. **Tek bir mesh** seç, **Tab** ile Düzenleme Modu'na geç, 3B Görünüm'de **N → Kolay Malzeme** sekmesini aç.
+
+**Blender 5.2.3 LTS** üzerinde test edildi. Eklentinin bildirdiği minimum sürüm 4.2'dir; daha eski desteklenen sürümler bu repodaki test çalışmasıyla doğrulanmadı. Harici Python paketi veya servis bağlantısı gerekmez.
+
+![Karakterin yanında gerçek Türkçe eklenti paneli](docs/images/12-addon-panel.png)
+
+## 1. Bir malzemenin tüm yüzlerini seç
+
+**1 · Malzemeden seçim** listesinden örneğin `M_Kemer` seç:
+
+| Düğme | Ne yapar? |
+|---|---|
+| **Seç** | Mevcut seçimin yerine bu malzemeye atanmış görünür yüzleri seçer. |
+| **+ Ekle** | Bu yüzleri mevcut seçimine ekler. |
+| **Seçimden çıkar** | Bu yüzleri turuncu seçimden çıkarır; malzeme ataması korunur. |
+
+![Karakterin geri kalanını seçmeden yalnız kemeri seçme](docs/images/02-belt-selection.png)
+
+**Yüzü seçimden çıkarmak ile malzemeden çıkarmak farklıdır.** Gerçek atamayı değiştirmek için 5. bölümdeki taşıma araçlarını kullan.
+
+## 2. Akıllı seçimle bölgeye tıkla
+
+**Akıllı bölge seçimi** bölümünde yöntemi belirle, **Akıllı seçim: bölgeye tıkla** düğmesine bas ve mesh'e tıkla.
+
+| Yöntem | Nasıl çalışır? |
+|---|---|
+| **Otomatik** | İlk yuva dışındaki atanmış malzemeyi grup olarak seçer. İlk malzemede veya atanmamış yüzlerde bağlı yüzey sınırlarına geçer. |
+| **Aynı malzeme** | Tıklanan yüzün malzemesine ait tüm görünür yüzleri, ayrı duran parçalar dahil seçer. |
+| **Yüzey sınırları** | Bağlı yüzeyde açı eşiğine kadar ilerler; malzeme sınırı, dikiş, keskin kenar ve gizli yüzde durur. |
+
+**Shift + tık** bölge ekler, **Ctrl + tık** bölge çıkarır. **Esc** veya sağ tık seçim adımını iptal eder. **Açı sınırı** küçüldükçe keskin dönüşlerde daha erken durur, büyüdükçe daha geniş yüzeyi kapsar.
+
+Bu yöntem geometri ve malzeme verisini kullanır. Etiketsiz bir mesh'te anlamsal olarak “bu bir kemer” demez; hatalı atanmış malzeme sınırını tek başına düzeltemez. Yukarıdaki kemer görseli mevcut bir malzeme grubunun seçimini gösterir.
+
+## 3. Seçimi ince ayarla ve sakla
+
+**2 · Seçimi düzelt** bölümünde:
+
+| Araç | Kullanımı |
+|---|---|
+| **Fırça + / Fırça −** | Blender'ın daire seçim aracını ekleme/çıkarma modunda açar. **Fırça boyutu** ile alanı ayarla. |
+| **Kutu seçimine dön** | Normal kutu seçim aracına döner. |
+| **Büyüt / Küçült** | Seçimi bir adım genişletir/daraltır. |
+| **Ters çevir / Temizle** | Görünür yüzlerde seçimi tersine çevirir veya kaldırır. |
+| **Seçimi sakla / Geri çağır** | Bu mesh için oturum boyunca bir seçim yedeği tutar ve geri getirir. |
+
+Blender'ın normal **B** kutu, **C** daire ve kement araçlarını da kullanabilirsin. Arkadaki yüzleri seçmek istemiyorsan **Alt+Z / X-Ray kapalı** olsun. Topoloji değişirse eski yüz numaraları yanlış yerleri seçmesin diye seçim hafızası uygulanmaz.
+
+## 4. Çıkarmak istediklerini saydam kırmızı işaretle
+
+Önce kemeri seç. **Kırmızı işaretle → ana malzemeye taşı** bölümünde iki yöntem var:
+
+**Normal seçim araçlarıyla:** İstemediğin yüzleri seç, **Seçilileri kırmızı işaretle** düğmesine bas ve gerektiği kadar tekrarla. Yanlış işaretleri seçip **Seçilileri kırmızıdan çıkar** ile temizle.
+
+**Ctrl ile boyayarak:** **Ctrl ile kırmızı işaretle** kutusunu aç. **Ctrl + sol tık/sürükleme** seçili yüzleri işaretler. Kırmızı yüze tekrar tıklamak işareti kaldırır. Sürüklemede ilk yüz davranışı belirler: kırmızıdan başlarsan siler, işaretsizden başlarsan ekler. **Ctrl+Shift + sol tık/sürükleme** her zaman siler; **Esc** o anki çizgiyi iptal eder.
+
+![Normal seçim kaldırıldıktan sonra kalan geçici kırmızı düzeltme çerçeveleri](docs/images/04-red-corrections.png)
+
+*Kırmızı çerçevelerin bağımsız kaldığını göstermek için bu görselde turuncu seçim sonradan temizlendi. İlk işaretleme sırasında yüzün görünür ve turuncu seçili olması gerekir.*
+
+**İç dolgu** varsayılan **0**; yüzün içi saydam kalır. İstersen sürgüyle hafif renk ekleyebilirsin. Normal seçimi değiştirmek birikmiş işaretleri silmez. **Clear — tüm kırmızıları iptal et** bütün işaretleri kaldırır; gerçek atama değişmez.
+
+Hazır olunca **Kırmızıları 1. ana malzemeye taşı** düğmesine bas. Kırmızı yüzler **ilk malzeme yuvasına (iç indeks 0)** taşınır ve turuncu seçimden çıkarılır. Bu gerçek atamadır. İlk yuva mutlaka `M_Vucut` değildir; kendi listendeki sırayı kontrol et. **Ctrl+Z** taşıma işlemini geri alır.
+
+![İşaretli yüzler taşındıktan sonra farklı malzeme gruplarının geçici renklerle görünümü](docs/images/05-transfer-result.png)
+
+*Bu taşıma yalnız geçici model kopyasında gösterildi. Sonucu ayırt etmek için rastgele önizleme renkleri açıldı.*
+
+Blender'ın normal Ctrl davranışına dönmek için kutucuğu kapat. Akıllı seçimin kendi tıklama adımında Ctrl, bölgeyi seçimden çıkarır. Topoloji değişince işaretler temizlenir; işaretli yüzlerin malzemesini başka yoldan değiştirdiysen temizleyip yeniden işaretle.
+
+## 5. Yüzleri seçtiğin malzemeye taşı veya yeni malzeme ata
+
+**Malzemeden yüz çıkar / taşı** bölümünde:
+
+1. Listeden **kaynak** malzemeyi seç; örneğin `M_Kemer`.
+2. Bu malzemeden çıkmasını istediğin yüzleri seç.
+3. **Hedef** alanında **Ana malzeme (1. yuva)** veya `M_Pant` gibi başka bir mevcut malzeme seç.
+4. **Seçili yüzleri malzemeden çıkar** düğmesine bas.
+
+Yalnız görünür, seçili ve o an kaynak malzemeye ait yüzler taşınır. Kaynak malzeme silinmez. Kaynak ve hedef aynıysa işlem yapılmaz. Bu yöntem istediğin hedefe taşır; kırmızı taşıma düğmesi özellikle ilk yuvaya taşır.
+
+Genel atama için **5 · Gerçek malzeme ataması → Seçime listedeki malzemeyi ata** kullanılır. Yeni malzeme için adını yazıp **Oluştur ve seçime ata** düğmesine bas; aynı adlı mevcut malzeme varsa yeniden kullanılır. Bunlar gerçek atamadır ve **Ctrl+Z** ile geri alınır.
+
+## 6. Bütün malzemelere tek tıkla farklı renk ver
+
+**Yalnız görünüm için malzeme rengi → Hepsine farklı rastgele renk** düğmesine bas. Etkin mesh'teki her farklı malzemeye ayrı önizleme rengi verir. Aynı malzemeyi gösteren yinelenmiş yuvalar aynı rengi alır. Yüzleri tek tek seçmek gerekmez; tekrar basarsan yeni bir palet oluşturur.
+
+Tek malzemeyi boyamak için listeden seç, **Önizleme rengi** ve **Renk yoğunluğu** ayarla, **Bu malzemeyi önizlemede boya** düğmesine bas. Renk seçiciyi değiştirdikten sonra tekrar uygula. Başka malzemelere verdiğin renkler kalır.
+
+![Yalnız kemere verilen turkuaz önizleme rengi](docs/images/07-single-material-color.png)
+
+**Bu malzemenin rengini kaldır** tek malzemeyi; **Tüm önizleme renklerini temizle** tüm renkleri temizler. **Normal görünüme dön** renkleri ve siyah önizlemeyi kapatır. Rastgele renklendirme, palet görünür olsun diye siyah karartmayı kapatır.
+
+## 7. Gerçek boya sürmeden diğer yüzleri karart
+
+**3 · Geçici siyah önizleme** bölümündeki seçenekler:
+
+| Seçenek | Nereyi karartır? |
+|---|---|
+| **Seçileni karart** | Seçili yüzleri |
+| **Diğer yüzleri karart** | Seçimin dışında kalan yüzleri |
+| **Bu malzemeyi karart** | Etkin malzemeye ait yüzleri |
+| **Diğer malzemeleri karart** | Etkin malzeme dışındaki malzemeleri |
+
+**Karartma** ile opaklığı ayarla, **Normal görünüme dön** ile kapat.
+
+![Diğer malzemeler kararırken kemer net kalır](docs/images/03-black-preview.png)
+
+**Renkler, siyah önizleme ve kırmızı işaretler GPU ekran katmanlarıdır.** Base Color, shader düğümleri, dokular, UV'ler, vertex renkleri, yüz malzeme atamaları ve dışa aktarım verilerini değiştirmezler. Render, bake, FBX/OBJ/glTF veya Substance Painter'a gitmezler. Dosya yeniden açılınca veya eklenti kapatılınca temizlenirler. Gerçek atama ve onarım düğmeleri ise modeli değiştirir.
+
+## 8. İnce çalışırken yalnız seçimi göster
+
+**4 · İnce çalışma için gizle → Diğerlerini gizle**, seçim dışını gizler. **Geri al**, önceden gizli olanları koruyarak eski gizlilik durumuna döner. **Tüm gizlileri göster**, işlem öncesinde gizlediğin yüzler dahil her şeyi açar.
+
+![İzolasyon sırasında yalnız kemer görünür](docs/images/06-isolate-belt.png)
+
+Geometri silinmez. Geri almayla uyumlu gizlilik yedeği geçici tamsayı mesh özniteliklerinde tutulur; GPU renk önizlemelerinden ayrıdır. Topolojiyi değiştirmeden önce izolasyonu geri al. Uyumsuz değişiklikten sonra eski gizlilik haritası uygulanmaz.
+
+## 9. Olası eksik yüzleri ve açıklıkları listele
+
+![Tarama, onarım kontrolü ve seçili nokta birleştirme düğmeleri](docs/images/15-hole-tools-panel.png)
+
+**Olası eksik yüzler / açıklıklar** panelini aç:
+
+1. **Eksik yüz / açıklık tara** düğmesine bas.
+2. Kenar sayısı, kapalı halka / zincir / dal türü ve komşu malzemeleri incele.
+3. Satırdaki büyüteç veya **Listedeki açıklığı seç ve yaklaş** ile sınırı seçip o bölgeye yaklaş.
+4. **Açıklıkları turkuaz çizgilerle göster** ile sınırları ekranda belirginleştir.
+5. İstersen **Yalnız listedeki malzemeyi tara** kutusunu açıp yeniden tara.
+
+![Aynı karakterde açık sınırların turkuaz çizgilerle gösterimi](docs/images/08-open-boundaries.png)
+
+Araç, **yalnız bir yüze bağlı** kenarları bağlantılı gruplara ayırır. Kıyafet ağzı veya açık bir yüzeyin dış sınırı bilerek açık bırakılmış olabilir; listedeki her satır kesin hata değildir. Gizli yüzler topolojiye dahil edilir; yüzü gizlemek yapay delik oluşturmaz. Boş kenarlar, tamamen kayıp parçalar ve bütün non-manifold sorunlar bu taramanın kapsamı değildir. Topoloji değişince yeniden tara.
+
+## 10. Uygun küçük delikleri otomatik kapat
+
+Tarama panelinde **En büyük açıklık** ayarını kontrol et ve **Onarılabilirleri kontrol et** düğmesine bas. Bu kontrol geometriye dokunmadan uygun/atlanan sayısını verir. **Uygun küçük delikleri kapat**, taramadaki uygun halkaları; **Yalnız listedeki açıklığı onar**, yalnız etkin satırı işler.
+
+Varsayılan boyut sınırı **0,02 dünya birimidir**; Blender'ın varsayılan metre ölçeğinde 2 cm. Yalnız görünür, dışbükey, yeterince düz **3 veya 4 kenarlı kapalı halkalar** kabul edilir. Karışık komşu malzeme, tutarsız yüz yönü, yakındaki çok-yüzlü kenar, aşırı boyut, bozuk/eğri sınır ve mevcut yüzeyle çakışma durumları atlanır; nedenleri listelenir.
+
+| Önce: kontrollü eksik üçgen | Sonra: bir yüz eklendi |
+|---|---|
+| ![Geçici kemer tokası kopyasından bilerek çıkarılan üçgen](docs/images/09-controlled-hole-before.png) | ![Aynı üçgen kapatıldı ve seçildi](docs/images/10-controlled-hole-after.png) |
+
+*Bu örnekte model kopyasındaki kemer tokasından bir üçgen bilerek çıkarıldı ve 0,04 boyut sınırıyla onarıldı. 146 olan açıklık sayısı 147'ye çıktı; bir yüz eklendikten sonra tekrar 146 oldu. Asıl karakter onarılmadı veya değiştirilmedi.*
+
+Yeni yüz komşu malzemeyi alır, yönü komşularına göre ayarlanır. Mevcut yüzlerin UV'leri korunur; **yeni yamanın UV'sini boyamadan önce kontrol et**. Araç otomatik unwrap/retopoloji yapmaz ve tasarım gereği açık olan yeri kapatıp kapatmama kararını vermez. **Ctrl+Z** ile geri alabilirsin.
+
+## 11. Yakın seçili noktaları birleştir
+
+**Yalnız seçili noktaları birleştir** bölümünde amaçladığın noktaları seç, **Birleştirme mesafesi** ayarla, başlangıçta **Yalnız bağlı geometri** açık kalsın ve **Seçili noktaları mesafeyle birleştir** düğmesine bas.
+
+Yalnız seçili, görünür noktalar işlenir. Varsayılan eşik **0,00001 dünya birimi**. Bağlantılı geometri seçeneği birleştirmeyi bağlı geometriyle sınırlar; ayrı duran çakışık noktaları birleştirmek istiyorsan bilinçli olarak kapat. Eşit olmayan obje ölçeğinde yerel eşik temkinli küçültülür; bazı yakın çiftler birleşmeden kalabilir. **Ctrl+Z** geri alır.
+
+Nokta birleştirmek ile eksik yüz kapatmak ayrı işlerdir. Birleştirme, doğru yüz oluştuğunu, iyi edge flow'u veya doğru UV'yi garanti etmez. Her gerçek geometri işleminden sonra bölgeyi kontrol et.
+
+## Sorun giderme
+
+| Durum | Kontrol et |
+|---|---|
+| Düğmeler kullanılamıyor | Tek mesh seçip Düzenleme Modu'na geç; çoklu obje düzenleme desteklenmez. |
+| Ctrl farklı davranıyor | İşin bitince **Ctrl ile kırmızı işaretle** kutusunu kapat. |
+| Yüz kırmızı işaretlenmiyor | İlk işaretlemede yüz görünür ve turuncu seçili olmalı. |
+| Onarılabilir delik yok | Atlama nedenlerini oku; açıklık büyük, düzensiz veya bilerek bırakılmış olabilir. Boyut sınırını körlemesine büyütme. |
+| Hafıza/liste/işaretler temizlendi | Topoloji, mesh veya oturum değişmiş olabilir. Yeniden tara/seç. |
+| Renk seçiciyi değiştirdim ama olmadı | **Bu malzemeyi önizlemede boya** düğmesine yeniden bas. |
+| Önizleme renkleri görünmüyor | Siyah önizlemeyi kapat, gerekiyorsa izolasyondan çık, temel mesh'i incele. |
+| Modifier yüzeyinde kaplama farklı | Önizleme temel düzenleme mesh'ini izler; geometri değiştiren modifier sonucu farklı olabilir. |
+| Seçimden çıkardım ama malzemesi aynı | Seçim atamayı değiştirmez. Gerçek atama/taşıma düğmesini kullan. |
+
+## Testler ve dosyalar
+
+Blender 5.2.3 arka plan testinde **45 testin 44'ü geçti, yalnız GUI gerektiren 1 test atlandı**. Seçim, atama ve geri alma, önizlemenin dışa aktarım verilerini koruması, kırmızı işaretler, gizleme/undo, tarama, onarımda malzeme/normal/UV ve birleştirme geri alması denetlenir. Komut ve kapsam için [geliştirme rehberine](docs/DEVELOPMENT.md) bak.
+
+```text
+kolay_malzeme_tr.py         Eklenti kaynağı; sabit modül adı
+dist/FacePilot-1.6.0.zip    Kurulabilir tek dosyalı eklenti
+README.md / README.tr.md   Tam İngilizce / Türkçe rehberler
+docs/images/              Gerçek Blender ekran görüntüleri
+docs/brand/               FacePilot logo dosyaları
+tests/test_addon.py        Geçici Blender test modelleri
+```
+
+Ekran görüntüleri kullanıcının karakterinin geçici kopyasından, ayrı Blender oturumunda alındı. Kaynak karakter `.blend` dosyası ve dokuları dağıtılmaz. FacePilot banner'ı üretilmiş marka görselidir; Blender ekran görüntüsü değildir. [Görsel notları](docs/SCREENSHOTS.md) ve [sürüm geçmişi](CHANGELOG.md) repoda bulunur.

@@ -1,0 +1,2 @@
+a20c6c42ac074509ca9dd3ca3bb849328dda50b7d1c89f4bbad68b62d1b5a6b4  kolay_malzeme_tr.py
+ef594838509d5cc4da89c45e9925cc6449c30b36d9c3e082f57049eabfbebb47  dist/FacePilot-1.6.0.zip
