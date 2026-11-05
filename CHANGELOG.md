@@ -1,5 +1,15 @@
 # Changelog / Sürüm geçmişi
 
+## 1.8.0 · Ignore unimportant openings
+
+- Per-row × and active-row Ignore; restore all ignored openings for the current mesh.
+- Ignore filters the list, cyan overlay, strict repair and preview; cancels pending proposals.
+- Runtime per-mesh exclusions survive rescans/material filters and unaffected boundaries after add-on repairs.
+- Geometry/UV/material/selection stay unchanged; external topology edits, welding and lifecycle reset exclusions.
+- 59 Blender tests: 58 passed, 1 GUI-only skipped. EN/TR docs and screenshot updated.
+
+Önemsiz açıklıkları yoksayma ve geri getirme. Yeniden taramada tercih korunur; yoksayılanlar önizleme/onarım dışında kalır. Mevcut mor öneri temizlenir. Modele dokunmayan oturumluk özellik.
+
 ## 1.7.0 · Preview-first polygon repair
 
 - Translucent violet repair proposals for 3–256-edge closed loops, including concave/curved boundaries.

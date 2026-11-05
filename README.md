@@ -10,7 +10,7 @@
 <p align="center">
   <a href="README.md"><strong>English</strong></a> ·
   <a href="README.tr.md"><strong>Türkçe</strong></a> ·
-  <a href="dist/FacePilot-1.7.0.zip">Download v1.7.0</a> ·
+  <a href="dist/FacePilot-1.8.0.zip">Download v1.8.0</a> ·
   <a href="docs/SHORTCUTS.md">Shortcut reference</a> ·
   <a href="docs/DEVELOPMENT.md">Development & tests</a>
 </p>
@@ -38,7 +38,7 @@ The project name is **FacePilot**. The installed add-on retains the name **Kolay
 
 ## Install in a minute
 
-1. Download [FacePilot-1.7.0.zip](dist/FacePilot-1.7.0.zip). Use the add-on ZIP, rather than GitHub's whole-repository ZIP.
+1. Download [FacePilot-1.8.0.zip](dist/FacePilot-1.8.0.zip). Use the add-on ZIP, rather than GitHub's whole-repository ZIP.
 2. In Blender, open **Edit → Preferences → Add-ons → menu → Install from Disk**.
 3. Choose the ZIP and enable **Kolay Malzeme TR**. Installing [kolay_malzeme_tr.py](kolay_malzeme_tr.py) directly also works.
 4. Select **one mesh**, press **Tab** for Edit Mode, then **N → Kolay Malzeme** in the 3D Viewport.
@@ -175,6 +175,14 @@ Expand **Olası eksik yüzler / açıklıklar**, then:
 
 The scanner groups edges with **exactly one linked face**. A clothing opening or disconnected surface border may be intentional; an entry is a candidate opening, not proof of a defect. Hidden faces still count in topology, so hiding one does not create a fake hole. Wire-only geometry, fully missing parts and every possible non-manifold defect are outside this scan's scope. Re-scan after topology edits.
 
+## 9.1. Ignore openings you want to keep · new in 1.8
+
+Choose a list row and click **Bu açıklığı yoksay**, or its **×** button. The opening disappears from the list and cyan overlay and is excluded from both strict repair and repair previews. Its geometry, UVs, material and current selection stay unchanged.
+
+![Ignore and restore controls beside the filtered opening list](docs/images/20-ignore-openings.png)
+
+**Yoksayılanları geri getir** restores all ignored openings for the current mesh. Re-scanning or switching the material filter keeps your exclusions. Ignoring or restoring cancels any pending violet proposal: rebuild it before applying. Add-on repairs preserve exclusions for boundaries that remain unchanged; external topology changes or welding reset the index-based exclusions. These preferences are session-only and clear when reopening the file or disabling the add-on.
+
 ## 10. Preview a repair before applying it · new in 1.7
 
 In the scan panel, use **Önizlemeli onarım (önerilen)**:
@@ -235,11 +243,11 @@ Welding points and filling a missing face solve different problems. A weld does 
 
 ## Quality & project files
 
-The Blender 5.2.3 background suite currently reports **53 tests: 52 passed, 1 GUI-only test skipped**. It covers selection, material transfer/undo, preview export invariance, red-mark lifecycle, isolation/undo, boundary scanning, repair/material/normal/UV behavior and merge undo. See [development instructions](docs/DEVELOPMENT.md) for the exact command and the limits of this evidence.
+The Blender 5.2.3 background suite currently reports **59 tests: 58 passed, 1 GUI-only test skipped**. It covers selection, material transfer/undo, preview export invariance, red-mark lifecycle, isolation/undo, boundary scanning, repair/material/normal/UV behavior and merge undo. See [development instructions](docs/DEVELOPMENT.md) for the exact command and the limits of this evidence.
 
 ```text
 kolay_malzeme_tr.py         Add-on source; stable module name
-dist/FacePilot-1.7.0.zip    Installable single-file add-on
+dist/FacePilot-1.8.0.zip    Installable single-file add-on
 README.md / README.tr.md   Complete English / Turkish guides
 docs/images/              Actual Blender screenshots
 docs/brand/               FacePilot logo artwork

@@ -247,6 +247,82 @@ class AddonTests(unittest.TestCase):
         self.assertEqual(self.fingerprint(), before)
         self.assertEqual(self.selected(), {1})
 
+    def test_ignore_hole_is_read_only_survives_rescan_and_restores(self):
+        self.assertTrue(hasattr(self.addon,'KMTR_OT_hole_ignore'),'Ignore-opening tool is missing')
+        bpy.ops.kmtr.hole_scan();before=self.fingerprint();selection=self.selected()
+        ignored=self.addon._runtime['hole_scan']['regions'][1]['edges']
+        bpy.context.window_manager.kmtr_settings.hole_active_index=1
+        self.assertEqual(bpy.ops.kmtr.hole_ignore(action='IGNORE'),{'FINISHED'})
+        report=self.addon._runtime['hole_scan']
+        self.assertEqual(len(report['regions']),3);self.assertEqual(report['ignored_count'],1)
+        self.assertNotIn(ignored,[r['edges'] for r in report['regions']])
+        bpy.ops.kmtr.hole_scan()
+        self.assertEqual(len(self.addon._runtime['hole_scan']['regions']),3)
+        self.assertEqual(self.fingerprint(),before);self.assertEqual(self.selected(),selection)
+        self.assertEqual(bpy.ops.kmtr.hole_ignore(action='RESTORE'),{'FINISHED'})
+        self.assertEqual(len(self.addon._runtime['hole_scan']['regions']),4)
+        self.assertEqual(self.addon._runtime['hole_scan']['ignored_count'],0)
+
+    def test_ignore_clears_pending_preview_and_excludes_it_from_repair(self):
+        self.assertTrue(hasattr(self.addon,'KMTR_OT_hole_ignore'),'Ignore-opening tool is missing')
+        self.make_curved_hex_hole();bpy.ops.kmtr.repair_preview(action='BUILD',scope='ALL')
+        before=self.fingerprint()
+        self.assertEqual(bpy.ops.kmtr.hole_ignore(action='IGNORE'),{'FINISHED'})
+        self.assertIsNone(self.addon._runtime['repair_preview'])
+        self.assertEqual(self.addon._runtime['hole_scan']['regions'],[])
+        self.assertEqual(bpy.ops.kmtr.repair_preview(action='BUILD',scope='ALL'),{'CANCELLED'})
+        self.assertEqual(bpy.ops.kmtr.repair_preview(action='APPLY'),{'CANCELLED'})
+        self.assertEqual(bpy.ops.kmtr.hole_repair(),{'CANCELLED'})
+        self.assertEqual(self.fingerprint(),before)
+
+    def test_ignore_survives_material_filter_without_affecting_other_material(self):
+        self.assertTrue(hasattr(self.addon,'KMTR_OT_hole_ignore'),'Ignore-opening tool is missing')
+        s=bpy.context.window_manager.kmtr_settings
+        self.obj.active_material_index=1;s.hole_active_material_only=True
+        try:
+            bpy.ops.kmtr.hole_scan()
+            self.assertEqual(len(self.addon._runtime['hole_scan']['regions']),2)
+            bpy.ops.kmtr.hole_ignore(action='IGNORE')
+            self.assertEqual(len(self.addon._runtime['hole_scan']['regions']),1)
+            self.obj.active_material_index=0;bpy.ops.kmtr.hole_scan()
+            self.assertEqual(len(self.addon._runtime['hole_scan']['regions']),2)
+            self.assertEqual(self.addon._runtime['hole_scan']['ignored_count'],0)
+            s.hole_active_material_only=False;bpy.ops.kmtr.hole_scan()
+            self.assertEqual(len(self.addon._runtime['hole_scan']['regions']),3)
+        finally:s.hole_active_material_only=False
+
+    def test_ignore_resets_after_external_topology_edit_and_lifecycle(self):
+        self.assertTrue(hasattr(self.addon,'KMTR_OT_hole_ignore'),'Ignore-opening tool is missing')
+        bpy.ops.kmtr.hole_scan();bpy.ops.kmtr.hole_ignore(action='IGNORE')
+        self.bm.verts.new((10,10,10));bmesh.update_edit_mesh(self.obj.data)
+        bpy.ops.kmtr.hole_scan()
+        self.assertEqual(len(self.addon._runtime['hole_scan']['regions']),4)
+        bpy.ops.kmtr.hole_ignore(action='IGNORE');self.addon.clear_runtime();bpy.ops.kmtr.hole_scan()
+        self.assertEqual(len(self.addon._runtime['hole_scan']['regions']),4)
+
+    def test_ignore_preserved_after_other_hole_repaired(self):
+        self.assertTrue(hasattr(self.addon,'KMTR_OT_hole_ignore'),'Ignore-opening tool is missing')
+        self.make_cube_hole(size=.01)
+        # Add a separate intentional open surface to ignore.
+        verts=[self.bm.verts.new(co) for co in [(1,0,0),(1.01,0,0),(1.01,.01,0),(1,.01,0)]]
+        self.bm.faces.new(verts).material_index=0
+        self.bm.normal_update();bmesh.update_edit_mesh(self.obj.data);bpy.ops.kmtr.hole_scan()
+        regions=self.addon._runtime['hole_scan']['regions']
+        index=next(i for i,r in enumerate(regions) if r['materials']==(0,))
+        bpy.ops.kmtr.hole_ignore(action='IGNORE',index=index)
+        bpy.context.window_manager.kmtr_settings.patch_max_size=.15
+        bpy.ops.kmtr.repair_preview(action='BUILD',scope='ALL')
+        self.assertEqual(bpy.ops.kmtr.repair_preview(action='APPLY'),{'FINISHED'})
+        self.assertEqual(len(self.addon._runtime['hole_scan']['regions']),0)
+        self.assertEqual(self.addon._runtime['hole_scan']['ignored_count'],1)
+
+    def test_ignore_invalid_index_does_not_clear_existing_preview(self):
+        self.assertTrue(hasattr(self.addon,'KMTR_OT_hole_ignore'),'Ignore-opening tool is missing')
+        self.make_curved_hex_hole();bpy.ops.kmtr.repair_preview(action='BUILD',scope='ALL')
+        plan=self.addon._runtime['repair_preview']
+        self.assertEqual(bpy.ops.kmtr.hole_ignore(action='IGNORE',index=999),{'CANCELLED'})
+        self.assertIs(self.addon._runtime['repair_preview'],plan)
+
     def test_empty_mesh_hole_scan_and_overlay_tick_are_safe(self):
         bmesh.ops.delete(self.bm, geom=list(self.bm.verts), context='VERTS')
         bmesh.update_edit_mesh(self.obj.data)

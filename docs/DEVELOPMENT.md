@@ -2,12 +2,12 @@
 
 ## Source and packaging
 
-The single-file module is [kolay_malzeme_tr.py](../kolay_malzeme_tr.py). FacePilot is the repository brand; the Python module, `kmtr.*` operator identifiers, Turkish labels and add-on name remain stable. Documentation and branding do not change the v1.7.0 implementation.
+The single-file module is [kolay_malzeme_tr.py](../kolay_malzeme_tr.py). FacePilot is the repository brand; the Python module, `kmtr.*` operator identifiers, Turkish labels and add-on name remain stable. Documentation and branding do not change the v1.8.0 implementation.
 
 The installable archive contains **one root entry**, `kolay_malzeme_tr.py`. Rebuild it from the repository root in PowerShell:
 
 ```powershell
-Compress-Archive -LiteralPath .\kolay_malzeme_tr.py -DestinationPath .\dist\FacePilot-1.7.0.zip -Force
+Compress-Archive -LiteralPath .\kolay_malzeme_tr.py -DestinationPath .\dist\FacePilot-1.8.0.zip -Force
 ```
 
 Eklenti tek Python dosyasıdır. Repo markası FacePilot olsa da modül, operatör adları ve Türkçe arayüz korunur. ZIP'in kökünde yalnız `kolay_malzeme_tr.py` bulunur.
@@ -32,12 +32,12 @@ blender --background --factory-startup --python-exit-code 1 --python tests/test_
 
 ## Recorded result
 
-Validated with Blender **5.2.3 LTS**, add-on **1.7.0**:
+Validated with Blender **5.2.3 LTS**, add-on **1.8.0**:
 
 ```text
-Ran 53 tests
+Ran 59 tests
 OK (skipped=1)
-52 passed; 1 native GUI brush test skipped in background mode
+58 passed; 1 native GUI brush test skipped in background mode
 ```
 
 This suite checks material selection/assignment and undo, selected-source transfers, smart-region boundaries, runtime color invariance, red marking/transfer/toggle/lifecycle, hidden state/isolation undo, fresh boundary scans, conservative hole eligibility, existing-surface overlap rejection, current neighbor material checks, patch winding and existing UV preservation, and selected-vertex welding/undo.

@@ -22,6 +22,7 @@ Belgelerde, kullanıcının etkin karakterinden alınan geçici mesh kopyasını
 | `17-polygon-opening-before.png` | Eight-edge opening deliberately made by removing three shirt quads / Kopyadaki üç atlet dörtgeni silinerek oluşturulan sekiz kenarlı açıklık |
 | `18-polygon-opening-preview.png` | Six violet proposed triangles; still 27,696 faces / Altı mor üçgen önerisi; hâlâ 27.696 gerçek yüz |
 | `19-polygon-opening-applied.png` | Explicit Apply on disposable copy: 27,702 faces / Yalnız geçici kopyada Uygula: 27.702 yüz |
+| `20-ignore-openings.png` | v1.8: one opening ignored, 146 → 145 visible entries; restore returned to 146 on the copy / Kopyada bir açıklık elendi, 146 → 145; geri getir ile tekrar 146 |
 
 For cleaner screenshots, floor/axis/relationship lines and seam display were disabled and the camera was adjusted in the disposable session. The red-mark fill remained 0. Material assignments temporarily changed for the transfer example were restored before later examples. The sidebar was scrolled and unrelated panels collapsed/omitted when isolating a tool group; the shipped controls and their draw code were unchanged.
 

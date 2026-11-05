@@ -1,4 +1,16 @@
-KOLAY MALZEME TR — 1.7.0
+KOLAY MALZEME TR — 1.8.0
+
+YENİ: ÖNEMSİZ AÇIKLIKLARI YOKSAYMA
+Listeden açıklığı seçip “Bu açıklığı yoksay”a veya satırdaki × işaretine
+basın. Bölge listeden ve turkuaz çizgilerden kaldırılır, toplu önizleme ve
+onarım dışında kalır. Geometri, UV, malzeme veya turuncu seçim değişmez.
+“Yoksayılanları geri getir” bu mesh'te elenen tüm açıklıkları geri getirir.
+Yeniden tarama ve malzeme filtresi değişikliği tercihi korur. Yoksayma ve
+geri getirme, mevcut mor önizlemeyi temizler; uygulamadan önce yeniden
+önizleyin. Eklentinin delik onarımı, değişmeden kalan yoksayılmış sınırları
+korur. Dışarıdan topoloji değişikliği veya nokta birleştirmede eski elemeler
+sıfırlanır. Tercihler oturumluk tutulur; dosya açılışı/eklenti kapatma ile
+temizlenir. Gerçek delik kapatma veya yüz silme işlemi yapılmaz.
 
 YENİ: ÇOK KENARLI / EĞRİ AÇIKLIKLAR İÇİN MOR YAMA ÖNİZLEMESİ
 N > Kolay Malzeme > Olası eksik yüzler / açıklıklar panelinde:

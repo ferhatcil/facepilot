@@ -1,7 +1,7 @@
 bl_info = {
     'name': 'Kolay Malzeme TR',
     'author': 'Codex',
-    'version': (1, 7, 0),
+    'version': (1, 8, 0),
     'blender': (4, 2, 0),
     'location': '3B Görünüm > N > Kolay Malzeme',
     'description': 'Türkçe yüz seçimi, malzeme atama ve dışa aktarılmayan karartma önizlemesi',
@@ -32,6 +32,7 @@ _runtime = {
     'hole_scan': None, 'hole_handler': None, 'hole_shader': None, 'hole_batch': None,
     'hole_positions': [], 'hole_dirty': True, 'hole_gpu_dirty': True, 'hole_error': '',
     'repair_report': None,
+    'ignored_holes': {},
     'repair_preview': None, 'patch_handler': None, 'patch_shader': None,
     'patch_line_shader': None, 'patch_batch': None, 'patch_line_batch': None,
     'patch_dirty': True, 'patch_check': True, 'patch_error': '',
@@ -474,10 +475,19 @@ def _draw_patch():
         gpu.state.blend_set(blend);gpu.state.depth_test_set(depth);gpu.state.depth_mask_set(write)
 
 
-def _topology_edited(obj):
+def _topology_edited(obj, preserve_ignored=False):
     clear_repair_preview()
     clear_red_marks()
     bmesh.update_edit_mesh(obj.data, loop_triangles=True, destructive=True)
+    key=_mesh_key(obj.data)
+    ignored=_runtime['ignored_holes'].pop(key,None)
+    if preserve_ignored and ignored:
+        # These callers only add faces/diagonals; existing vertex/edge indices stay intact.
+        bm=bmesh.from_edit_mesh(obj.data)
+        existing={r['edges'] for r in find_open_boundaries(bm,obj.matrix_world)}
+        retained=ignored['regions'] & existing
+        if retained:
+            _runtime['ignored_holes'][key]={'topology':_boundary_topology_key(bm),'regions':retained}
     _runtime.update(signature=None, geometry_dirty=True, red_geometry_dirty=True, hole_dirty=True)
     if _runtime['hole_scan']:
         _runtime['hole_scan']['stale'] = True
@@ -494,6 +504,15 @@ def _stop_hole_overlay():
         bpy.app.timers.unregister(_holes_tick)
     _runtime.update(hole_handler=None, hole_shader=None, hole_batch=None, hole_positions=[], hole_gpu_dirty=True)
     _redraw()
+
+
+def _ignored_openings(obj,bm):
+    key=_mesh_key(obj.data)
+    stored=_runtime['ignored_holes'].get(key)
+    if stored and stored['topology']!=_boundary_topology_key(bm):
+        _runtime['ignored_holes'].pop(key,None)
+        stored=None
+    return stored['regions'] if stored else set()
 
 
 def _hole_report(obj, bm):
@@ -1068,8 +1087,11 @@ class KMTR_OT_hole_scan(KMTR_EditOperator, bpy.types.Operator):
         _runtime['repair_report'] = None
         if settings.hole_active_material_only:
             regions = [r for r in regions if obj.active_material_index in r['materials']]
+        ignored=_ignored_openings(obj,bm)
+        ignored_count=sum(r['edges'] in ignored for r in regions)
+        regions=[r for r in regions if r['edges'] not in ignored]
         _runtime['hole_scan'] = {'mesh': _mesh_key(obj.data), 'topology': _boundary_topology_key(bm),
-                                 'regions': regions, 'stale': False}
+                                 'regions': regions, 'stale': False, 'ignored_count':ignored_count}
         _runtime['hole_dirty'] = True; _runtime['hole_error'] = ''
         settings.hole_items.clear()
         for i, region in enumerate(regions):
@@ -1084,6 +1106,36 @@ class KMTR_OT_hole_scan(KMTR_EditOperator, bpy.types.Operator):
         _holes_overlay_changed(settings, context)
         self.report({'INFO'}, str(len(regions)) + ' olası açıklık bulundu; otomatik onarım yapılmadı')
         _redraw()
+        return {'FINISHED'}
+
+
+class KMTR_OT_hole_ignore(KMTR_EditOperator,bpy.types.Operator):
+    bl_idname='kmtr.hole_ignore'
+    bl_label='Açıklığı yoksay'
+    bl_description='Önemsiz açıklığı listeden, turkuaz çizgilerden ve onarımdan çıkarır. Geometri değişmez; Yoksayılanları geri getir ile geri alınır'
+    action: EnumProperty(items=[('IGNORE','Bu açıklığı yoksay',''),('RESTORE','Yoksayılanları geri getir','')])
+    index: IntProperty(default=-1,min=-1,options={'HIDDEN','SKIP_SAVE'})
+
+    def execute(self,context):
+        obj,bm=_edit_mesh(context);key=_mesh_key(obj.data)
+        settings=context.window_manager.kmtr_settings
+        if self.action=='IGNORE':
+            report=_hole_report(obj,bm)
+            index=settings.hole_active_index if self.index<0 else self.index
+            if report is None or not 0<=index<len(report['regions']):
+                self.report({'WARNING'},'Geçerli bir açıklık seçin veya yeniden tarayın');return {'CANCELLED'}
+            ignored=set(_ignored_openings(obj,bm))
+            ignored.add(report['regions'][index]['edges'])
+            _runtime['ignored_holes'][key]={'topology':_boundary_topology_key(bm),'regions':ignored}
+            next_index=index
+        else:
+            _runtime['ignored_holes'].pop(key,None)
+            next_index=settings.hole_active_index
+        clear_repair_preview()
+        bpy.ops.kmtr.hole_scan()
+        settings.hole_active_index=min(next_index,max(0,len(settings.hole_items)-1))
+        self.report({'INFO'},'Açıklık yoksayıldı; geometri değişmedi' if self.action=='IGNORE'
+                    else 'Bu mesh için yoksayılan açıklıklar geri getirildi')
         return {'FINISHED'}
 
 
@@ -1177,7 +1229,7 @@ class KMTR_OT_repair_preview(KMTR_EditOperator, bpy.types.Operator):
         count=len(created)
         bm.faces.index_update();bm.faces.ensure_lookup_table()
         _set_faces(context,bm,{f.index for f in created})
-        _topology_edited(obj);bpy.ops.kmtr.hole_scan()
+        _topology_edited(obj,preserve_ignored=True);bpy.ops.kmtr.hole_scan()
         self.report({'INFO'},str(count)+' önizlenen üçgen eklendi. Yeni UV’leri kontrol edin. Ctrl+Z: geri al')
         return {'FINISHED'}
 
@@ -1237,7 +1289,7 @@ class KMTR_OT_hole_repair(KMTR_EditOperator, bpy.types.Operator):
         summary['filled'] = count
         bm.faces.index_update(); bm.faces.ensure_lookup_table()
         _set_faces(context, bm, {f.index for f in new_faces if f.is_valid})
-        _topology_edited(obj)
+        _topology_edited(obj,preserve_ignored=True)
         bpy.ops.kmtr.hole_scan()
         _runtime['repair_report'] = summary
         self.report({'INFO'}, str(count)+' yeni yüz eklendi; '+str(len(plans)-len(eligible))+' sınır atlandı. Yeni yüzlerin UV’lerini kontrol edin. Ctrl+Z: geri al')
@@ -1766,6 +1818,8 @@ class KMTR_UL_holes(bpy.types.UIList):
         row.label(text=item.name)
         row.label(text=str(item.edge_count) + ' kenar')
         row.operator('kmtr.hole_focus', text='', icon='VIEWZOOM').index = index
+        ignore=row.operator('kmtr.hole_ignore',text='',icon='X')
+        ignore.action='IGNORE';ignore.index=index
 
 
 class KMTR_PT_holes(bpy.types.Panel):
@@ -1796,6 +1850,12 @@ class KMTR_PT_holes(bpy.types.Panel):
             layout.label(text='Geometri değişti; tekrar tarayın.', icon='ERROR')
             return
         layout.label(text=str(len(report['regions'])) + ' olası açıklık bulundu')
+        ignored_count=report.get('ignored_count',0)
+        if ignored_count:
+            layout.label(text=str(ignored_count)+' açıklık yoksayıldı',icon='HIDE_ON')
+        restore=layout.row()
+        restore.enabled=bool(_runtime['ignored_holes'].get(_mesh_key(obj.data),{}).get('regions'))
+        restore.operator('kmtr.hole_ignore',text='Yoksayılanları geri getir',icon='LOOP_BACK').action='RESTORE'
         if settings.hole_items:
             layout.template_list('KMTR_UL_holes', '', settings, 'hole_items', settings, 'hole_active_index', rows=5)
             index = min(settings.hole_active_index, len(settings.hole_items)-1)
@@ -1807,6 +1867,8 @@ class KMTR_PT_holes(bpy.types.Panel):
                 layout.label(text=str(hidden) + ' sınır kenarı gizli', icon='INFO')
             op = layout.operator('kmtr.hole_focus', text='Listedeki açıklığı seç ve yaklaş', icon='VIEWZOOM')
             op.index = index
+            op=layout.operator('kmtr.hole_ignore',text='Bu açıklığı yoksay',icon='X')
+            op.action='IGNORE';op.index=index
         layout.prop(settings, 'hole_overlay')
         box=layout.box()
         box.label(text='Önizlemeli onarım (önerilen)',icon='HIDE_OFF')
@@ -1966,6 +2028,7 @@ class KMTR_PT_panel(bpy.types.Panel):
 
 
 def clear_runtime():
+    _runtime['ignored_holes'].clear()
     clear_repair_preview()
     _stop_hole_overlay()
     _runtime['hole_scan'] = None
@@ -2028,7 +2091,7 @@ def _on_update(*args):
     _runtime['hole_dirty'] = True
 
 
-CLASSES = (KMTR_HoleItem, KMTR_Settings, KMTR_OT_hole_scan, KMTR_OT_hole_focus, KMTR_OT_repair_preview, KMTR_OT_hole_repair, KMTR_OT_merge_selected,
+CLASSES = (KMTR_HoleItem, KMTR_Settings, KMTR_OT_hole_scan, KMTR_OT_hole_ignore, KMTR_OT_hole_focus, KMTR_OT_repair_preview, KMTR_OT_hole_repair, KMTR_OT_merge_selected,
            KMTR_OT_material_select, KMTR_OT_material_color, KMTR_OT_remove_from_material, KMTR_OT_smart_select,
            KMTR_OT_red_action, KMTR_OT_red_paint,
            KMTR_OT_selection_action, KMTR_OT_brush,

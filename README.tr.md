@@ -10,7 +10,7 @@
 <p align="center">
   <a href="README.tr.md"><strong>Türkçe</strong></a> ·
   <a href="README.md"><strong>English</strong></a> ·
-  <a href="dist/FacePilot-1.7.0.zip">v1.7.0 indir</a> ·
+  <a href="dist/FacePilot-1.8.0.zip">v1.8.0 indir</a> ·
   <a href="docs/SHORTCUTS.md">Kısayollar</a> ·
   <a href="docs/DEVELOPMENT.md">Geliştirme ve testler</a>
 </p>
@@ -38,7 +38,7 @@ Projenin İngilizce adı **FacePilot**. Blender'daki eklenti adı **Kolay Malzem
 
 ## Bir dakikada kurulum
 
-1. [FacePilot-1.7.0.zip](dist/FacePilot-1.7.0.zip) dosyasını indir. GitHub'ın bütün repo ZIP'i yerine bu eklenti ZIP'ini kullan.
+1. [FacePilot-1.8.0.zip](dist/FacePilot-1.8.0.zip) dosyasını indir. GitHub'ın bütün repo ZIP'i yerine bu eklenti ZIP'ini kullan.
 2. Blender'da **Edit → Preferences → Add-ons → menü → Install from Disk** yolunu aç.
 3. ZIP'i seç ve **Kolay Malzeme TR** eklentisini etkinleştir. [kolay_malzeme_tr.py](kolay_malzeme_tr.py) dosyasını doğrudan kurmak da mümkün.
 4. **Tek bir mesh** seç, **Tab** ile Düzenleme Modu'na geç, 3B Görünüm'de **N → Kolay Malzeme** sekmesini aç.
@@ -175,6 +175,14 @@ Geometri silinmez. Geri almayla uyumlu gizlilik yedeği geçici tamsayı mesh ö
 
 Araç, **yalnız bir yüze bağlı** kenarları bağlantılı gruplara ayırır. Kıyafet ağzı veya açık bir yüzeyin dış sınırı bilerek açık bırakılmış olabilir; listedeki her satır kesin hata değildir. Gizli yüzler topolojiye dahil edilir; yüzü gizlemek yapay delik oluşturmaz. Boş kenarlar, tamamen kayıp parçalar ve bütün non-manifold sorunlar bu taramanın kapsamı değildir. Topoloji değişince yeniden tara.
 
+## 9.1. Önemsiz açıklıkları yoksay · 1.8 yeniliği
+
+Listeden açıklığı seçip **Bu açıklığı yoksay** düğmesine veya satırdaki **×** işaretine bas. Açıklık listeden ve turkuaz çizgilerden kalkar; sıkı onarıma ve yama önizlemesine dahil edilmez. Geometri, UV, malzeme ve mevcut seçim değişmez.
+
+![Elenen açıklık sayısı, yoksay ve geri getir düğmeleri](docs/images/20-ignore-openings.png)
+
+**Yoksayılanları geri getir**, bu mesh'te elediğin bütün açıklıkları geri getirir. Yeniden tarama ve malzeme filtresi değişiklikleri tercihlerini korur. Yoksayma/geri getirme mevcut mor öneriyi iptal eder; uygulamadan önce yeniden önizle. Eklentinin yaptığı onarımlarda değişmeden kalan sınırlar yoksayılmış kalır; dışarıdan topoloji değişikliği veya nokta birleştirme, eski indekslere dayalı elemeleri sıfırlar. Tercihler oturumluk tutulur; dosya yeniden açılınca veya eklenti kapatılınca temizlenir.
+
 ## 10. Onarımı uygulamadan önce önizle · 1.7 yeniliği
 
 Tarama panelindeki **Önizlemeli onarım (önerilen)** bölümünü kullan:
@@ -235,11 +243,11 @@ Nokta birleştirmek ile eksik yüz kapatmak ayrı işlerdir. Birleştirme, doğr
 
 ## Testler ve dosyalar
 
-Blender 5.2.3 arka plan testinde **53 testin 52'si geçti, yalnız GUI gerektiren 1 test atlandı**. Seçim, atama ve geri alma, önizlemenin dışa aktarım verilerini koruması, kırmızı işaretler, gizleme/undo, tarama, onarımda malzeme/normal/UV ve birleştirme geri alması denetlenir. Komut ve kapsam için [geliştirme rehberine](docs/DEVELOPMENT.md) bak.
+Blender 5.2.3 arka plan testinde **59 testin 58'i geçti, yalnız GUI gerektiren 1 test atlandı**. Seçim, atama ve geri alma, önizlemenin dışa aktarım verilerini koruması, kırmızı işaretler, gizleme/undo, tarama, onarımda malzeme/normal/UV ve birleştirme geri alması denetlenir. Komut ve kapsam için [geliştirme rehberine](docs/DEVELOPMENT.md) bak.
 
 ```text
 kolay_malzeme_tr.py         Eklenti kaynağı; sabit modül adı
-dist/FacePilot-1.7.0.zip    Kurulabilir tek dosyalı eklenti
+dist/FacePilot-1.8.0.zip    Kurulabilir tek dosyalı eklenti
 README.md / README.tr.md   Tam İngilizce / Türkçe rehberler
 docs/images/              Gerçek Blender ekran görüntüleri
 docs/brand/               FacePilot logo dosyaları
