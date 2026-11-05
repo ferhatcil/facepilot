@@ -1,7 +1,7 @@
 bl_info = {
     'name': 'Kolay Malzeme TR',
     'author': 'Codex',
-    'version': (1, 6, 0),
+    'version': (1, 7, 0),
     'blender': (4, 2, 0),
     'location': '3B Görünüm > N > Kolay Malzeme',
     'description': 'Türkçe yüz seçimi, malzeme atama ve dışa aktarılmayan karartma önizlemesi',
@@ -32,6 +32,9 @@ _runtime = {
     'hole_scan': None, 'hole_handler': None, 'hole_shader': None, 'hole_batch': None,
     'hole_positions': [], 'hole_dirty': True, 'hole_gpu_dirty': True, 'hole_error': '',
     'repair_report': None,
+    'repair_preview': None, 'patch_handler': None, 'patch_shader': None,
+    'patch_line_shader': None, 'patch_batch': None, 'patch_line_batch': None,
+    'patch_dirty': True, 'patch_check': True, 'patch_error': '',
 }
 
 PREVIEW_ITEMS = [
@@ -286,7 +289,193 @@ def plan_small_hole_repairs(obj, bm, regions, max_size):
     return plans
 
 
+def _repair_state_key(obj, bm):
+    """Selection/view may change; a proposal must not outlive source-data edits."""
+    return (_mesh_key(obj), _mesh_key(obj.data), _boundary_topology_key(bm),
+            hash(tuple((tuple(v.co), v.hide) for v in bm.verts)),
+            hash(tuple((e.hide, e.seam, e.smooth) for e in bm.edges)),
+            hash(tuple((f.material_index, f.hide) for f in bm.faces)),
+            tuple((_mesh_key(s.material) if s.material else None) for s in obj.material_slots),
+            tuple(tuple(row) for row in obj.matrix_world),
+            tuple((layer.name, hash(tuple(tuple(l[layer].uv) for f in bm.faces for l in f.loops)))
+                  for layer in bm.loops.layers.uv.values()))
+
+
+def _ordered_boundary(bm, region):
+    edges=[bm.edges[i] for i in region['edges']]
+    adjacency={v:[] for e in edges for v in e.verts}
+    for edge in edges:
+        a,b=edge.verts;adjacency[a].append(b);adjacency[b].append(a)
+    if not adjacency or any(len(links)!=2 for links in adjacency.values()):return []
+    ordered=[];current=min(adjacency,key=lambda v:v.index);previous=None
+    for _ in adjacency:
+        ordered.append(current)
+        nxt=min((v for v in adjacency[current] if v!=previous),key=lambda v:v.index)
+        previous,current=current,nxt
+    return ordered if current==ordered[0] and len(set(ordered))==len(adjacency) else []
+
+
+def _patch_boundary_matches(bm, region, triangles):
+    """Every boundary used once against its neighbor; internal edges twice/opposite."""
+    uses={}
+    for triangle in triangles:
+        for a,b in zip(triangle,triangle[1:]+triangle[:1]):
+            uses.setdefault(tuple(sorted((a,b))),[]).append((a,b))
+    border={tuple(sorted(v.index for v in bm.edges[i].verts)):bm.edges[i] for i in region['edges']}
+    for key,directions in uses.items():
+        if key in border:
+            if len(directions)!=1:return False
+            edge=border[key];loop=next(l for l in edge.link_faces[0].loops if l.edge==edge)
+            if directions[0]!=(loop.link_loop_next.vert.index,loop.vert.index):return False
+        else:
+            if len(directions)!=2 or directions[0]!=tuple(reversed(directions[1])):return False
+            existing=bm.edges.get((bm.verts[key[0]],bm.verts[key[1]]))
+            if existing is not None and existing.link_faces:return False
+    return set(border).issubset(uses)
+
+
+def build_repair_preview(obj, bm, regions, max_size):
+    """Build exact candidate triangles/UVs on copies, without touching the edit mesh."""
+    from mathutils.bvhtree import BVHTree
+    bm.normal_update()
+    coords=[obj.matrix_world@v.co for v in bm.verts]
+    tree=BVHTree.FromPolygons(coords,[tuple(v.index for v in f.verts) for f in bm.faces]) if bm.faces else None
+    cache={};patches=[];skipped={};previous_triangles=[]
+    for region in regions:
+        reason='';ordered=[]
+        edges=[bm.edges[i] for i in region['edges']]
+        materials={f.material_index for e in edges for f in e.link_faces}
+        if not region['closed'] or not 3<=region['edge_count']<=256:reason='Kapalı, en fazla 256 kenarlı halka gerekli'
+        elif any(len(e.link_faces)!=1 for e in edges):reason='Sınır artık açık değil'
+        elif any(e.hide or any(v.hide for v in e.verts) or any(f.hide for f in e.link_faces) for e in edges):reason='Gizli geometri'
+        elif len(materials)!=1:reason='Birden fazla komşu malzeme'
+        elif any(len(e.link_faces)>2 for edge in edges for v in edge.verts for e in v.link_edges):reason='Yakında çok-yüzlü kenar'
+        else:
+            ordered=_ordered_boundary(bm,region)
+            if not ordered:reason='Sınır sıralanamıyor'
+        if not reason:
+            points=[coords[v.index] for v in ordered]
+            diameter=max((a-b).length for a in points for b in points)
+            if diameter>max_size:reason='Önizleme boyut sınırından büyük'
+            elif diameter<=1e-9 or any((points[i]-points[(i+1)%len(points)]).length<diameter*1e-7 for i in range(len(points))):reason='Çakışık noktalar / dejenere sınır'
+        if not reason:
+            temp=bm.copy()
+            try:
+                temp.edges.ensure_lookup_table();temp.verts.ensure_lookup_table()
+                fill=bmesh.ops.holes_fill(temp,edges=[temp.edges[i] for i in region['edges']],sides=0)['faces']
+                if len(fill)!=1:
+                    reason='Tek bir yama oluşturulamadı';triangles=[]
+                else:
+                    face=fill[0]
+                    same=opposite=0
+                    for loop in face.loops:
+                        old=next(f for f in loop.edge.link_faces if f!=face)
+                        other=next(l for l in old.loops if l.edge==loop.edge)
+                        if other.vert==loop.vert:same+=1
+                        else:opposite+=1
+                    if same>opposite:face.normal_flip()
+                    filled=bmesh.ops.triangulate(temp,faces=fill,quad_method='BEAUTY',ngon_method='BEAUTY')['faces']
+                    triangles=[tuple(v.index for v in f.verts) for f in filled]
+                    uv_data=[{layer.name:tuple(tuple(l[layer].uv) for l in f.loops)
+                              for layer in temp.loops.layers.uv.values()} for f in filled]
+                    if len(triangles)!=len(ordered)-2 or not _patch_boundary_matches(bm,region,triangles):
+                        reason='Üçgenleme sınırı / komşu yüz yönleri tutarsız'
+                    else:
+                        for triangle in triangles:
+                            p=[coords[i] for i in triangle]
+                            if (p[1]-p[0]).cross(p[2]-p[0]).length<=diameter*diameter*1e-10:
+                                reason='Sıfır alanlı üçgen';break
+                            if tree and _patch_overlaps_surface(p,tree,bm,coords,cache):
+                                reason='Mevcut yüzeyle çakışma';break
+                        if not reason:
+                            all_triangles=previous_triangles+triangles
+                            for index,triangle in enumerate(triangles):
+                                other=all_triangles[:len(previous_triangles)+index]
+                                if other:
+                                    other_tree=BVHTree.FromPolygons(coords,other)
+                                    # A compact read-only BMesh gives the overlap helper stable face indices.
+                                    other_bm=bmesh.new()
+                                    try:
+                                        verts={i:other_bm.verts.new(coords[i]) for t in other for i in t}
+                                        for t in other:other_bm.faces.new([verts[i] for i in t])
+                                        other_bm.faces.ensure_lookup_table();other_bm.verts.index_update()
+                                        oc=[v.co.copy() for v in other_bm.verts]
+                                        if _patch_overlaps_surface([coords[i] for i in triangle],other_tree,other_bm,oc,{}):
+                                            reason='Önerilen yamalar birbiriyle çakışıyor';break
+                                    finally:other_bm.free()
+                    if not reason:
+                        patches.append({'triangles':triangles,'uv_data':uv_data,
+                                        'material_index':next(iter(materials)), 'boundary':region['edges']})
+                        previous_triangles.extend(triangles)
+            finally:temp.free()
+        if reason:skipped[reason]=skipped.get(reason,0)+1
+    return {'state':_repair_state_key(obj,bm),'mesh':_mesh_key(obj.data),'max_size':max_size,
+            'patches':patches,'skipped':skipped,'coords':[tuple(v.co) for v in bm.verts]}
+
+
+def clear_repair_preview(message=''):
+    if _runtime['patch_handler'] is not None:
+        try:bpy.types.SpaceView3D.draw_handler_remove(_runtime['patch_handler'],'WINDOW')
+        except (ValueError,ReferenceError):pass
+    if bpy.app.timers.is_registered(_patch_tick):bpy.app.timers.unregister(_patch_tick)
+    _runtime.update(repair_preview=None,patch_handler=None,patch_shader=None,patch_line_shader=None,
+                    patch_batch=None,patch_line_batch=None,patch_dirty=True,patch_error=message)
+    _redraw()
+
+
+def _patch_tick():
+    plan=_runtime['repair_preview']
+    if not plan:return None
+    if _single_edit_mesh(bpy.context) and _runtime['patch_check']:
+        obj,bm=_edit_mesh(bpy.context)
+        if plan['mesh']==_mesh_key(obj.data):
+            if plan['state']!=_repair_state_key(obj,bm):
+                clear_repair_preview('Model değişti; yeniden önizleyin.');return None
+            _runtime['patch_check']=False
+    return 0.35
+
+
+def _draw_patch():
+    plan=_runtime['repair_preview']
+    if not plan or not _single_edit_mesh(bpy.context):return
+    obj=bpy.context.edit_object
+    if plan['mesh']!=_mesh_key(obj.data) or plan['state'][0]!=_mesh_key(obj) or not obj.visible_get():return
+    import gpu
+    from gpu_extras.batch import batch_for_shader
+    blend,depth,write=gpu.state.blend_get(),gpu.state.depth_test_get(),gpu.state.depth_mask_get()
+    try:
+        if _runtime['patch_shader'] is None:
+            _runtime['patch_shader']=gpu.shader.from_builtin('UNIFORM_COLOR')
+            _runtime['patch_line_shader']=gpu.shader.from_builtin('POLYLINE_UNIFORM_COLOR')
+        shader=_runtime['patch_shader'];line=_runtime['patch_line_shader']
+        if _runtime['patch_dirty']:
+            from mathutils import Vector
+            positions=[];lines=[]
+            for patch in plan['patches']:
+                for tri in patch['triangles']:
+                    points=[Vector(plan['coords'][i]) for i in tri]
+                    normal=(points[1]-points[0]).cross(points[2]-points[0]).normalized()
+                    points=[p+normal*0.00001 for p in points]
+                    positions.extend(points)
+                    for i in range(3):lines.extend((points[i],points[(i+1)%3]))
+            _runtime['patch_batch']=batch_for_shader(shader,'TRIS',{'pos':positions})
+            _runtime['patch_line_batch']=batch_for_shader(line,'LINES',{'pos':lines})
+            _runtime['patch_dirty']=False
+        gpu.state.blend_set('ALPHA');gpu.state.depth_test_set('LESS_EQUAL');gpu.state.depth_mask_set(False)
+        with gpu.matrix.push_pop():
+            gpu.matrix.multiply_matrix(obj.matrix_world)
+            shader.bind();shader.uniform_float('color',(.65,.35,1.0,bpy.context.window_manager.kmtr_settings.patch_opacity))
+            _runtime['patch_batch'].draw(shader)
+            line.bind();line.uniform_float('viewportSize',gpu.state.viewport_get()[2:])
+            line.uniform_float('lineWidth',2.0);line.uniform_float('color',(.8,.5,1.0,1.0))
+            _runtime['patch_line_batch'].draw(line)
+    except Exception as exc:_runtime['patch_error']='Yama önizlemesi çizilemedi: '+str(exc)
+    finally:
+        gpu.state.blend_set(blend);gpu.state.depth_test_set(depth);gpu.state.depth_mask_set(write)
+
+
 def _topology_edited(obj):
+    clear_repair_preview()
     clear_red_marks()
     bmesh.update_edit_mesh(obj.data, loop_triangles=True, destructive=True)
     _runtime.update(signature=None, geometry_dirty=True, red_geometry_dirty=True, hole_dirty=True)
@@ -818,6 +1007,8 @@ class KMTR_HoleItem(bpy.types.PropertyGroup):
 
 
 class KMTR_Settings(bpy.types.PropertyGroup):
+    patch_max_size: FloatProperty(name='Önizleme açıklık sınırı',default=.15,min=.000001,soft_max=1.0,subtype='DISTANCE',unit='LENGTH')
+    patch_opacity: FloatProperty(name='Yama saydamlığı',default=.35,min=.05,max=.85,update=lambda s,c:_redraw())
     hole_items: CollectionProperty(type=KMTR_HoleItem, options={'SKIP_SAVE'})
     hole_active_index: IntProperty(default=0, min=0, options={'SKIP_SAVE'})
     hole_active_material_only: BoolProperty(name='Yalnız listedeki malzemeyi tara', default=False, options={'SKIP_SAVE'})
@@ -927,6 +1118,67 @@ class KMTR_OT_hole_focus(KMTR_EditOperator, bpy.types.Operator):
             window_region = next(r for r in context.area.regions if r.type == 'WINDOW')
             with context.temp_override(area=context.area, region=window_region):
                 bpy.ops.view3d.view_selected(use_all_regions=False)
+        return {'FINISHED'}
+
+
+class KMTR_OT_repair_preview(KMTR_EditOperator, bpy.types.Operator):
+    bl_idname='kmtr.repair_preview'
+    bl_label='Yama önizlemesi'
+    bl_description='Çok kenarlı/eğri kapalı sınır için mor üçgen önerisi gösterir. Yalnız Uygula gerçek yüz ekler; Ctrl+Z geri alır'
+    bl_options={'REGISTER','UNDO'}
+    action: EnumProperty(items=[('BUILD','Önizle',''),('APPLY','Önizlemeyi uygula',''),('CANCEL','Önizlemeyi iptal et','')])
+    scope: EnumProperty(items=[('ACTIVE','Listedeki açıklık',''),('ALL','Taramadaki uygun açıklıklar','')],default='ACTIVE')
+
+    def execute(self,context):
+        if self.action=='CANCEL':
+            clear_repair_preview();return {'FINISHED'}
+        obj,bm=_edit_mesh(context);settings=context.window_manager.kmtr_settings
+        if self.action=='BUILD':
+            clear_repair_preview()
+            report=_hole_report(obj,bm)
+            if report is None:
+                self.report({'WARNING'},'Önce açıklıkları yeniden tarayın');return {'CANCELLED'}
+            regions=report['regions']
+            if self.scope=='ACTIVE':regions=regions[settings.hole_active_index:settings.hole_active_index+1]
+            plan=build_repair_preview(obj,bm,regions,settings.patch_max_size)
+            _runtime['repair_preview']=plan
+            _runtime['patch_check']=True
+            if not plan['patches']:
+                self.report({'WARNING'},'Bu sınır için yama önerilemedi; nedenleri panelde');_redraw()
+                return {'CANCELLED'}
+            if not bpy.app.background:
+                _runtime['patch_handler']=bpy.types.SpaceView3D.draw_handler_add(_draw_patch,(),'WINDOW','POST_VIEW')
+                bpy.app.timers.register(_patch_tick,first_interval=.1)
+            count=sum(len(p['triangles']) for p in plan['patches'])
+            self.report({'INFO'},str(len(plan['patches']))+' yama / '+str(count)+' üçgen yalnız önizlemede; henüz yüz eklenmedi')
+            _redraw();return {'FINISHED'}
+        plan=_runtime['repair_preview']
+        if not plan or not plan['patches']:
+            self.report({'WARNING'},'Önce bir yama önizlemesi oluşturun');return {'CANCELLED'}
+        if plan['state']!=_repair_state_key(obj,bm) or plan['max_size']!=settings.patch_max_size:
+            clear_repair_preview('Model veya boyut sınırı değişti; yeniden önizleyin.')
+            self.report({'WARNING'},_runtime['patch_error']);return {'CANCELLED'}
+        created=[];old_edges=set(bm.edges)
+        try:
+            for patch in plan['patches']:
+                for tri,uv_data in zip(patch['triangles'],patch['uv_data']):
+                    face=bm.faces.new([bm.verts[i] for i in tri]);created.append(face)
+                    face.material_index=patch['material_index']
+                    for name,values in uv_data.items():
+                        layer=bm.loops.layers.uv.get(name)
+                        for loop,value in zip(face.loops,values):loop[layer].uv=value
+                    face.normal_update()
+        except Exception as exc:
+            for face in created:
+                if face.is_valid:bm.faces.remove(face)
+            for edge in set(bm.edges)-old_edges:
+                if not edge.link_faces:bm.edges.remove(edge)
+            self.report({'ERROR'},'Yama uygulanamadı: '+str(exc));return {'CANCELLED'}
+        count=len(created)
+        bm.faces.index_update();bm.faces.ensure_lookup_table()
+        _set_faces(context,bm,{f.index for f in created})
+        _topology_edited(obj);bpy.ops.kmtr.hole_scan()
+        self.report({'INFO'},str(count)+' önizlenen üçgen eklendi. Yeni UV’leri kontrol edin. Ctrl+Z: geri al')
         return {'FINISHED'}
 
 
@@ -1556,8 +1808,29 @@ class KMTR_PT_holes(bpy.types.Panel):
             op = layout.operator('kmtr.hole_focus', text='Listedeki açıklığı seç ve yaklaş', icon='VIEWZOOM')
             op.index = index
         layout.prop(settings, 'hole_overlay')
+        box=layout.box()
+        box.label(text='Önizlemeli onarım (önerilen)',icon='HIDE_OFF')
+        box.label(text='Çok kenarlı / eğri kapalı açıklıklar')
+        box.label(text='Uygulamadan önce açıklığı kontrol edin.')
+        box.prop(settings,'patch_max_size')
+        op=box.operator('kmtr.repair_preview',text='Listedeki açıklığı önizle')
+        op.action='BUILD';op.scope='ACTIVE'
+        op=box.operator('kmtr.repair_preview',text='Tüm uygun açıklıkları önizle')
+        op.action='BUILD';op.scope='ALL'
+        proposal=_runtime['repair_preview']
+        if proposal and proposal['mesh']==_mesh_key(obj.data):
+            count=sum(len(p['triangles']) for p in proposal['patches'])
+            box.label(text=str(len(proposal['patches']))+' yama · '+str(count)+' önerilen üçgen')
+            box.label(text='Henüz geometri değiştirilmedi.')
+            box.prop(settings,'patch_opacity',slider=True)
+            row=box.row(align=True)
+            row.operator('kmtr.repair_preview',text='Uygula',icon='CHECKMARK').action='APPLY'
+            row.operator('kmtr.repair_preview',text='İptal',icon='X').action='CANCEL'
+            for reason,count in proposal['skipped'].items():box.label(text=str(count)+' atlandı: '+reason)
+        if _runtime['patch_error']:box.label(text=_runtime['patch_error'],icon='ERROR')
+        box.label(text='Uygula gerçek yüz ekler. Ctrl+Z: geri al.')
         box = layout.box()
-        box.label(text='Küçük delik onarımı · Ctrl+Z: geri al')
+        box.label(text='Sıkı küçük delik modu · Ctrl+Z')
         box.label(text='Yalnız uygun 3–4 kenarlı açıklıklar.')
         box.prop(settings, 'repair_max_size')
         op = box.operator('kmtr.hole_repair', text='Onarılabilirleri kontrol et')
@@ -1693,6 +1966,7 @@ class KMTR_PT_panel(bpy.types.Panel):
 
 
 def clear_runtime():
+    clear_repair_preview()
     _stop_hole_overlay()
     _runtime['hole_scan'] = None
     _runtime['repair_report'] = None
@@ -1748,12 +2022,13 @@ def _on_load_post(*args):
 
 @persistent
 def _on_update(*args):
+    _runtime['patch_check'] = True
     _runtime['geometry_dirty'] = True
     _runtime['red_geometry_dirty'] = True
     _runtime['hole_dirty'] = True
 
 
-CLASSES = (KMTR_HoleItem, KMTR_Settings, KMTR_OT_hole_scan, KMTR_OT_hole_focus, KMTR_OT_hole_repair, KMTR_OT_merge_selected,
+CLASSES = (KMTR_HoleItem, KMTR_Settings, KMTR_OT_hole_scan, KMTR_OT_hole_focus, KMTR_OT_repair_preview, KMTR_OT_hole_repair, KMTR_OT_merge_selected,
            KMTR_OT_material_select, KMTR_OT_material_color, KMTR_OT_remove_from_material, KMTR_OT_smart_select,
            KMTR_OT_red_action, KMTR_OT_red_paint,
            KMTR_OT_selection_action, KMTR_OT_brush,

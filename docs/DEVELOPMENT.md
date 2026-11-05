@@ -2,12 +2,12 @@
 
 ## Source and packaging
 
-The single-file module is [kolay_malzeme_tr.py](../kolay_malzeme_tr.py). FacePilot is the repository brand; the Python module, `kmtr.*` operator identifiers, Turkish labels and add-on name remain stable. Documentation and branding do not change the v1.6.0 implementation.
+The single-file module is [kolay_malzeme_tr.py](../kolay_malzeme_tr.py). FacePilot is the repository brand; the Python module, `kmtr.*` operator identifiers, Turkish labels and add-on name remain stable. Documentation and branding do not change the v1.7.0 implementation.
 
 The installable archive contains **one root entry**, `kolay_malzeme_tr.py`. Rebuild it from the repository root in PowerShell:
 
 ```powershell
-Compress-Archive -LiteralPath .\kolay_malzeme_tr.py -DestinationPath .\dist\FacePilot-1.6.0.zip -Force
+Compress-Archive -LiteralPath .\kolay_malzeme_tr.py -DestinationPath .\dist\FacePilot-1.7.0.zip -Force
 ```
 
 Eklenti tek Python dosyasıdır. Repo markası FacePilot olsa da modül, operatör adları ve Türkçe arayüz korunur. ZIP'in kökünde yalnız `kolay_malzeme_tr.py` bulunur.
@@ -32,12 +32,12 @@ blender --background --factory-startup --python-exit-code 1 --python tests/test_
 
 ## Recorded result
 
-Validated with Blender **5.2.3 LTS**, add-on **1.6.0**:
+Validated with Blender **5.2.3 LTS**, add-on **1.7.0**:
 
 ```text
-Ran 45 tests
+Ran 53 tests
 OK (skipped=1)
-44 passed; 1 native GUI brush test skipped in background mode
+52 passed; 1 native GUI brush test skipped in background mode
 ```
 
 This suite checks material selection/assignment and undo, selected-source transfers, smart-region boundaries, runtime color invariance, red marking/transfer/toggle/lifecycle, hidden state/isolation undo, fresh boundary scans, conservative hole eligibility, existing-surface overlap rejection, current neighbor material checks, patch winding and existing UV preservation, and selected-vertex welding/undo.
@@ -55,7 +55,8 @@ Testler seçim/atama, geri alma, akıllı bölge sınırları, önizlemenin ger�
 | Selection memory | Mesh identity + topology guard |
 | Isolation backup | Temporary integer BMesh layers to follow Blender undo states |
 | Boundary scan | Connected groups of edges with one linked face; hidden topology included |
-| Small-hole plan | Read-only eligibility checks, current neighbor materials, world-space dimensions, surface-intersection rejection |
+| Polygon repair preview | Copy-only hole fill + triangulation, exact triangle/UV proposal, GPU violet overlay, explicit Apply/Cancel and source-state guard |
+| Strict small-hole plan | Read-only eligibility checks, current neighbor materials, world-space dimensions, surface-intersection rejection |
 | Patch creation | `bmesh.ops.holes_fill`, adjacent material and winding, existing-face UV preservation |
 | Weld | Selected visible vertices, small threshold, connected-only default |
 

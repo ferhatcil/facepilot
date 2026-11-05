@@ -1,4 +1,24 @@
-KOLAY MALZEME TR — 1.6.0
+KOLAY MALZEME TR — 1.7.0
+
+YENİ: ÇOK KENARLI / EĞRİ AÇIKLIKLAR İÇİN MOR YAMA ÖNİZLEMESİ
+N > Kolay Malzeme > Olası eksik yüzler / açıklıklar panelinde:
+1. “Eksik yüz / açıklık tara” ile listeyi oluşturun.
+2. “Önizlemeli onarım (önerilen)” bölümünde açıklık sınırını kontrol edin.
+   Varsayılan 0,15 dünya birimidir; varsayılan metre ölçeğinde 15 cm.
+3. “Listedeki açıklığı önizle” veya “Tüm uygun açıklıkları önizle”ye basın.
+4. Önerilen saydam mor üçgenleri inceleyin; henüz gerçek yüz eklenmez.
+5. “Uygula” görünen üçgenleri gerçekten ekler. “İptal” yalnız önizlemeyi
+   kaldırır. Uygulamayı Ctrl+Z ile geri alabilirsiniz.
+
+3–256 kenarlı kapalı halkalar değerlendirilir; eğri ve içbükey sınırlar
+da üçgenlenebilir. Her açıklık hata değildir; kasıtlı açık yerleri kontrol
+edin. Gizli/bozuk/dallanan sınırlar, karışık malzemeler, mevcut yüzeyle veya
+diğer yamayla çakışma ve kullanılan iç köşegenler atlanır.
+Modelin konumu/topolojisi/gizliliği/malzemesi/UV'si veya obje dönüşümü
+değişirse yeniden önizleyin. Yeni yüzlerin UV'lerini boyamadan önce kontrol
+edin; otomatik unwrap, remesh veya smoothing uygulanmaz. Eski 3–4 kenarlı
+küçük delik aracı “Sıkı küçük delik modu” olarak ayrı durur; oradaki
+“0 uygun” sayısı bu yeni önizlemeli modun sonucunu ifade etmez.
 
 YENİ: TÜM MALZEMELERE TEK TIKLA FARKLI RASTGELE RENK
 N > Kolay Malzeme > “Yalnız görünüm için malzeme rengi” bölümünde

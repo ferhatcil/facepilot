@@ -385,6 +385,123 @@ class AddonTests(unittest.TestCase):
         self.undo_refresh()
         self.assertEqual(len(self.bm.verts), 4)
 
+    def make_curved_hex_hole(self):
+        bmesh.ops.delete(self.bm, geom=list(self.bm.verts), context='VERTS')
+        loop=[self.bm.verts.new((0.04*math.cos(i*math.tau/6),0.04*math.sin(i*math.tau/6),
+                               0.007 if i%2 else 0)) for i in range(6)]
+        tip=self.bm.verts.new((0,0,0.12))
+        for i in range(6):self.bm.faces.new((loop[i],tip,loop[(i+1)%6])).material_index=1
+        self.bm.normal_update();bmesh.update_edit_mesh(self.obj.data)
+        bpy.ops.kmtr.hole_scan()
+        bpy.context.window_manager.kmtr_settings.patch_max_size=0.15
+
+    def test_polygon_preview_is_read_only_and_cancel_clears(self):
+        self.assertTrue(hasattr(self.addon,'build_repair_preview'), 'Repair preview is not implemented')
+        self.make_curved_hex_hole()
+        before=self.fingerprint();selected=self.selected()
+        self.assertEqual(bpy.ops.kmtr.repair_preview(action='BUILD',scope='ACTIVE'),{'FINISHED'})
+        plan=self.addon._runtime['repair_preview']
+        self.assertEqual(len(plan['patches']),1)
+        self.assertEqual(len(plan['patches'][0]['triangles']),4)
+        self.assertEqual(self.fingerprint(),before);self.assertEqual(self.selected(),selected)
+        self.assertEqual(bpy.ops.kmtr.repair_preview(action='CANCEL'),{'FINISHED'})
+        self.assertIsNone(self.addon._runtime['repair_preview'])
+        self.assertEqual(self.fingerprint(),before)
+
+    def test_polygon_preview_applies_exact_triangles_material_uv_and_undo(self):
+        self.assertTrue(hasattr(self.addon,'build_repair_preview'), 'Repair preview is not implemented')
+        self.make_curved_hex_hole()
+        old=list(self.bm.faces);uv=self.bm.loops.layers.uv.active
+        old_uv={f:tuple(tuple(l[uv].uv) for l in f.loops) for f in old}
+        bpy.ops.kmtr.repair_preview(action='BUILD',scope='ACTIVE')
+        expected={frozenset(t) for t in self.addon._runtime['repair_preview']['patches'][0]['triangles']}
+        bpy.ops.ed.undo_push(message='Before preview repair')
+        self.assertEqual(bpy.ops.kmtr.repair_preview(action='APPLY'),{'FINISHED'})
+        self.bm.verts.index_update()
+        added=[f for f in self.bm.faces if f not in old]
+        self.assertEqual({frozenset(v.index for v in f.verts) for f in added},expected)
+        self.assertTrue(all(f.material_index==1 for f in added))
+        for f in old:self.assertEqual(tuple(tuple(l[uv].uv) for l in f.loops),old_uv[f])
+        self.assertEqual(self.addon.find_open_boundaries(self.bm),[])
+        self.assertIsNone(self.addon._runtime['repair_preview'])
+        bpy.ops.ed.undo_push(message='After preview repair');self.undo_refresh()
+        self.assertEqual(len(self.bm.faces),6)
+
+    def test_polygon_preview_rejects_moved_vertices_before_apply(self):
+        self.assertTrue(hasattr(self.addon,'build_repair_preview'), 'Repair preview is not implemented')
+        self.make_curved_hex_hole();bpy.ops.kmtr.repair_preview(action='BUILD',scope='ACTIVE')
+        self.bm.verts.ensure_lookup_table();self.bm.verts[0].co.x+=0.001
+        bmesh.update_edit_mesh(self.obj.data);before=self.fingerprint()
+        self.assertEqual(bpy.ops.kmtr.repair_preview(action='APPLY'),{'CANCELLED'})
+        self.assertEqual(self.fingerprint(),before)
+
+    def test_polygon_preview_rejects_material_change_but_allows_selection_change(self):
+        self.assertTrue(hasattr(self.addon,'build_repair_preview'), 'Repair preview is not implemented')
+        self.make_curved_hex_hole();bpy.ops.kmtr.repair_preview(action='BUILD',scope='ACTIVE')
+        self.select(set())
+        self.assertEqual(bpy.ops.kmtr.repair_preview(action='APPLY'),{'FINISHED'})
+        self.make_curved_hex_hole();bpy.ops.kmtr.repair_preview(action='BUILD',scope='ACTIVE')
+        self.bm.faces.ensure_lookup_table();self.bm.faces[0].material_index=0
+        bmesh.update_edit_mesh(self.obj.data);before=self.fingerprint()
+        self.assertEqual(bpy.ops.kmtr.repair_preview(action='APPLY'),{'CANCELLED'})
+        self.assertEqual(self.fingerprint(),before)
+
+    def test_polygon_preview_rejects_existing_surface_and_lifecycle_clears(self):
+        self.assertTrue(hasattr(self.addon,'build_repair_preview'), 'Repair preview is not implemented')
+        bpy.ops.kmtr.hole_scan();bpy.context.window_manager.kmtr_settings.patch_max_size=10
+        before=self.fingerprint()
+        self.assertEqual(bpy.ops.kmtr.repair_preview(action='BUILD',scope='ALL'),{'CANCELLED'})
+        self.assertEqual(self.fingerprint(),before)
+        self.make_curved_hex_hole();bpy.ops.kmtr.repair_preview(action='BUILD',scope='ACTIVE')
+        self.addon.clear_runtime()
+        self.assertIsNone(self.addon._runtime['repair_preview'])
+
+    def test_polygon_preview_rejects_uv_hide_and_transform_edits(self):
+        self.assertTrue(hasattr(self.addon,'build_repair_preview'))
+        for kind in ('UV','HIDE','TRANSFORM'):
+            self.make_curved_hex_hole();bpy.ops.kmtr.repair_preview(action='BUILD',scope='ACTIVE')
+            self.bm.faces.ensure_lookup_table()
+            if kind=='UV':
+                layer=self.bm.loops.layers.uv.active
+                self.bm.faces[0].loops[0][layer].uv.x+=.01
+            elif kind=='HIDE':self.bm.faces[0].hide_set(True)
+            else:self.obj.location.x+=.01
+            bmesh.update_edit_mesh(self.obj.data);before=self.fingerprint()
+            self.assertEqual(bpy.ops.kmtr.repair_preview(action='APPLY'),{'CANCELLED'},kind)
+            self.assertEqual(self.fingerprint(),before)
+        self.obj.location.x=0
+
+    def test_polygon_preview_tick_discards_stale_geometry(self):
+        self.assertTrue(hasattr(self.addon,'build_repair_preview'))
+        self.make_curved_hex_hole();bpy.ops.kmtr.repair_preview(action='BUILD',scope='ACTIVE')
+        self.bm.verts.ensure_lookup_table();self.bm.verts[0].co.z+=.001
+        bmesh.update_edit_mesh(self.obj.data);self.addon._on_update()
+        self.addon._patch_tick()
+        self.assertIsNone(self.addon._runtime['repair_preview'])
+        self.assertIn('yeniden',self.addon._runtime['patch_error'])
+
+    def test_polygon_preview_does_not_reuse_an_existing_manifold_diagonal(self):
+        from mathutils import Vector
+        self.make_cube_hole();bpy.ops.kmtr.hole_scan()
+        bpy.context.window_manager.kmtr_settings.patch_max_size=.15
+        proposal=self.addon.build_repair_preview(self.obj,self.bm,self.addon._runtime['hole_scan']['regions'],.15)
+        triangles=proposal['patches'][0]['triangles']
+        diagonal=set(triangles[0])&set(triangles[1])
+        self.bm.verts.ensure_lookup_table()
+        a,c=[self.bm.verts[i] for i in diagonal]
+        p,q,r=[self.bm.verts[i].co for i in triangles[0]]
+        normal=(q-p).cross(r-p).normalized()
+        tangent=(c.co-a.co).cross(normal).normalized()
+        midpoint=(a.co+c.co)*.5
+        b=self.bm.verts.new(midpoint+normal*.03+tangent*.01)
+        d=self.bm.verts.new(midpoint+normal*.03-tangent*.01)
+        for verts in ((a,c,b),(a,d,c),(a,b,d),(b,c,d)):
+            self.bm.faces.new(verts).material_index=1
+        self.bm.normal_update();bmesh.update_edit_mesh(self.obj.data)
+        bpy.ops.kmtr.hole_scan();before=self.fingerprint()
+        self.assertEqual(bpy.ops.kmtr.repair_preview(action='BUILD',scope='ALL'),{'CANCELLED'})
+        self.assertEqual(self.fingerprint(),before)
+
     def test_hole_focus_selects_boundary_and_rejects_changed_topology(self):
         bpy.ops.kmtr.hole_scan()
         report = self.addon._runtime['hole_scan']

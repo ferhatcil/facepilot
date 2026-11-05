@@ -1,5 +1,15 @@
 # Changelog / Sürüm geçmişi
 
+## 1.7.0 · Preview-first polygon repair
+
+- Translucent violet repair proposals for 3–256-edge closed loops, including concave/curved boundaries.
+- Separate active-region/all-scan preview, size limit, opacity, explicit Apply and Cancel.
+- Apply creates exactly the previewed triangles and patch UV data; existing faces are kept intact.
+- Reject stale coordinates/topology/visibility/materials/UVs/transforms, surface collisions and reused manifold diagonals.
+- 53 Blender fixture tests: 52 pass, 1 GUI-only skip. Updated EN/TR guides and actual character screenshots.
+
+3–256 kenarlı kapalı sınırlar için saydam mor yama önerisi; tek açıklık/tüm tarama, boyut sınırı ve saydamlık ayarı. Yalnız Uygula gerçek üçgen ekler; İptal geometriyi değiştirmez. Eski sıkı küçük delik modu ayrı korunur. Değişmiş model ve yüzey/köşegen çakışma kontrolleri eklendi.
+
 ## 1.6.0 · FacePilot repository edition
 
 - One-click distinct random viewport colors for every unique material on the active mesh.

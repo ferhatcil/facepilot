@@ -10,7 +10,7 @@
 <p align="center">
   <a href="README.md"><strong>English</strong></a> ·
   <a href="README.tr.md"><strong>Türkçe</strong></a> ·
-  <a href="dist/FacePilot-1.6.0.zip">Download v1.6.0</a> ·
+  <a href="dist/FacePilot-1.7.0.zip">Download v1.7.0</a> ·
   <a href="docs/SHORTCUTS.md">Shortcut reference</a> ·
   <a href="docs/DEVELOPMENT.md">Development & tests</a>
 </p>
@@ -38,7 +38,7 @@ The project name is **FacePilot**. The installed add-on retains the name **Kolay
 
 ## Install in a minute
 
-1. Download [FacePilot-1.6.0.zip](dist/FacePilot-1.6.0.zip). Use the add-on ZIP, rather than GitHub's whole-repository ZIP.
+1. Download [FacePilot-1.7.0.zip](dist/FacePilot-1.7.0.zip). Use the add-on ZIP, rather than GitHub's whole-repository ZIP.
 2. In Blender, open **Edit → Preferences → Add-ons → menu → Install from Disk**.
 3. Choose the ZIP and enable **Kolay Malzeme TR**. Installing [kolay_malzeme_tr.py](kolay_malzeme_tr.py) directly also works.
 4. Select **one mesh**, press **Tab** for Edit Mode, then **N → Kolay Malzeme** in the 3D Viewport.
@@ -175,11 +175,33 @@ Expand **Olası eksik yüzler / açıklıklar**, then:
 
 The scanner groups edges with **exactly one linked face**. A clothing opening or disconnected surface border may be intentional; an entry is a candidate opening, not proof of a defect. Hidden faces still count in topology, so hiding one does not create a fake hole. Wire-only geometry, fully missing parts and every possible non-manifold defect are outside this scan's scope. Re-scan after topology edits.
 
-## 10. Patch suitable small holes
+## 10. Preview a repair before applying it · new in 1.7
+
+In the scan panel, use **Önizlemeli onarım (önerilen)**:
+
+1. Scan the mesh, choose an opening in the list, and inspect it with the magnifier.
+2. Set **Önizleme açıklık sınırı** (default **0.15 world units**, 15 cm at the default meter scale).
+3. Click **Listedeki açıklığı önizle** for that row, or **Tüm uygun açıklıkları önizle** for the current scan.
+4. Inspect the **translucent violet triangles**. Adjust **Yama saydamlığı** as needed. The panel reports proposed patches/triangles and skipped reasons; **no real faces have been added**.
+5. Click **Uygula** to create exactly the shown triangles, or **İptal** to discard the overlay. **Ctrl+Z** undoes an applied repair.
+
+![Violet repair proposal and explicit Apply/Cancel controls](docs/images/16-repair-preview-panel.png)
+
+This mode supports **3–256-edge closed loops**, including concave and curved/nonplanar boundaries. Triangulation is calculated on a copy. Each patch needs one adjacent material and consistent boundary winding. Hidden geometry, invalid/degenerate boundaries, existing-surface collisions, collisions between proposals, and interior diagonals already used by other faces are rejected. This mode can still propose closing an intentional opening: inspect it before applying.
+
+| Controlled eight-edge opening | Violet proposal | Applied on a disposable copy |
+|---|---|---|
+| ![Eight-edge opening deliberately created on the copied shirt](docs/images/17-polygon-opening-before.png) | ![Exact candidate triangles without editing the mesh](docs/images/18-polygon-opening-preview.png) | ![Those triangles applied only to the documentation copy](docs/images/19-polygon-opening-applied.png) |
+
+*For the close-up, three neighboring shirt quads were deliberately removed on the copy, creating an eight-edge opening. The preview kept its 27,696 real faces unchanged; Apply added six triangles, reaching 27,702 faces. This demonstration never edited the live original.*
+
+The preview is runtime GPU data and is not exported. Selection and camera changes are allowed; changes to coordinates, topology, visibility, materials, UVs or object transform invalidate the proposal. Rebuild after changing the size limit. New triangles inherit the adjacent material and copied patch UV data; **check new UVs before texturing**. No smoothing, remeshing, welding, automatic unwrap or semantic hole classification is performed.
+
+## 10.1. Strict small-hole mode
 
 In the scan panel, set **En büyük açıklık**, then **Onarılabilirleri kontrol et**. This check reports eligible/skipped regions without editing geometry. **Uygun küçük delikleri kapat** patches all eligible regions in the current scan; **Yalnız listedeki açıklığı onar** limits the operation to the active list row.
 
-The default size is **0.02 world units** (2 cm with Blender's default meter scale). Only visible, convex, sufficiently planar **3- or 4-edge closed loops** qualify. Mixed adjacent materials, inconsistent winding, nearby non-manifold junctions, excessive size, degenerate/warped boundaries and existing-surface overlaps are skipped with reasons.
+This separate **Sıkı küçük delik modu** retains the old conservative behavior. The default size is **0.02 world units** (2 cm with Blender's default meter scale). Only visible, convex, sufficiently planar **3- or 4-edge closed loops** qualify. Its numeric **Onarılabilirleri kontrol et** is a count check, separate from the violet geometric preview above. Mixed adjacent materials, inconsistent winding, nearby non-manifold junctions, excessive size, degenerate/warped boundaries and existing-surface overlaps are skipped with reasons.
 
 | Before: controlled missing triangle | After: one face added |
 |---|---|
@@ -213,11 +235,11 @@ Welding points and filling a missing face solve different problems. A weld does 
 
 ## Quality & project files
 
-The Blender 5.2.3 background suite currently reports **45 tests: 44 passed, 1 GUI-only test skipped**. It covers selection, material transfer/undo, preview export invariance, red-mark lifecycle, isolation/undo, boundary scanning, repair/material/normal/UV behavior and merge undo. See [development instructions](docs/DEVELOPMENT.md) for the exact command and the limits of this evidence.
+The Blender 5.2.3 background suite currently reports **53 tests: 52 passed, 1 GUI-only test skipped**. It covers selection, material transfer/undo, preview export invariance, red-mark lifecycle, isolation/undo, boundary scanning, repair/material/normal/UV behavior and merge undo. See [development instructions](docs/DEVELOPMENT.md) for the exact command and the limits of this evidence.
 
 ```text
 kolay_malzeme_tr.py         Add-on source; stable module name
-dist/FacePilot-1.6.0.zip    Installable single-file add-on
+dist/FacePilot-1.7.0.zip    Installable single-file add-on
 README.md / README.tr.md   Complete English / Turkish guides
 docs/images/              Actual Blender screenshots
 docs/brand/               FacePilot logo artwork

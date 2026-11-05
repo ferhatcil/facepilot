@@ -10,7 +10,7 @@
 <p align="center">
   <a href="README.tr.md"><strong>Türkçe</strong></a> ·
   <a href="README.md"><strong>English</strong></a> ·
-  <a href="dist/FacePilot-1.6.0.zip">v1.6.0 indir</a> ·
+  <a href="dist/FacePilot-1.7.0.zip">v1.7.0 indir</a> ·
   <a href="docs/SHORTCUTS.md">Kısayollar</a> ·
   <a href="docs/DEVELOPMENT.md">Geliştirme ve testler</a>
 </p>
@@ -38,7 +38,7 @@ Projenin İngilizce adı **FacePilot**. Blender'daki eklenti adı **Kolay Malzem
 
 ## Bir dakikada kurulum
 
-1. [FacePilot-1.6.0.zip](dist/FacePilot-1.6.0.zip) dosyasını indir. GitHub'ın bütün repo ZIP'i yerine bu eklenti ZIP'ini kullan.
+1. [FacePilot-1.7.0.zip](dist/FacePilot-1.7.0.zip) dosyasını indir. GitHub'ın bütün repo ZIP'i yerine bu eklenti ZIP'ini kullan.
 2. Blender'da **Edit → Preferences → Add-ons → menü → Install from Disk** yolunu aç.
 3. ZIP'i seç ve **Kolay Malzeme TR** eklentisini etkinleştir. [kolay_malzeme_tr.py](kolay_malzeme_tr.py) dosyasını doğrudan kurmak da mümkün.
 4. **Tek bir mesh** seç, **Tab** ile Düzenleme Modu'na geç, 3B Görünüm'de **N → Kolay Malzeme** sekmesini aç.
@@ -175,11 +175,33 @@ Geometri silinmez. Geri almayla uyumlu gizlilik yedeği geçici tamsayı mesh ö
 
 Araç, **yalnız bir yüze bağlı** kenarları bağlantılı gruplara ayırır. Kıyafet ağzı veya açık bir yüzeyin dış sınırı bilerek açık bırakılmış olabilir; listedeki her satır kesin hata değildir. Gizli yüzler topolojiye dahil edilir; yüzü gizlemek yapay delik oluşturmaz. Boş kenarlar, tamamen kayıp parçalar ve bütün non-manifold sorunlar bu taramanın kapsamı değildir. Topoloji değişince yeniden tara.
 
-## 10. Uygun küçük delikleri otomatik kapat
+## 10. Onarımı uygulamadan önce önizle · 1.7 yeniliği
+
+Tarama panelindeki **Önizlemeli onarım (önerilen)** bölümünü kullan:
+
+1. Mesh'i tara, listeden açıklığı seç ve büyüteçle incele.
+2. **Önizleme açıklık sınırı** ayarını kontrol et; varsayılan **0,15 dünya birimi**, varsayılan metre ölçeğinde 15 cm.
+3. Tek satır için **Listedeki açıklığı önizle**, mevcut taramadakiler için **Tüm uygun açıklıkları önizle** düğmesine bas.
+4. Önerilen **saydam mor üçgenleri** incele. **Yama saydamlığı** sürgüsünü ayarlayabilirsin. Panel yama/üçgen sayısını ve atlama nedenlerini gösterir; **henüz gerçek yüz eklenmez**.
+5. Görünen üçgenleri gerçekten eklemek için **Uygula**, vazgeçmek için **İptal** kullan. Uygulanan onarımı **Ctrl+Z** geri alır.
+
+![Mor onarım önerisi ile Uygula ve İptal düğmeleri](docs/images/16-repair-preview-panel.png)
+
+Bu mod **3–256 kenarlı kapalı halkaları**, içbükey ve eğri/düzlemsel olmayan sınırlar dahil değerlendirir. Üçgenleme kopyada hesaplanır. Komşu malzeme tek olmalı, sınır yönleri tutarlı olmalıdır. Gizli geometri, bozuk/dejenere sınırlar, mevcut yüzeyle veya önerilen başka yamayla çakışma ve başka yüzlerin kullandığı iç köşegenler reddedilir. Tasarım gereği açık bırakılmış bir yere de yama önerebilir; uygulamadan önce kontrol et.
+
+| Kontrollü sekiz kenarlı açıklık | Mor öneri | Geçici kopyada uygulanmış hâli |
+|---|---|---|
+| ![Kopyadaki atlet üzerinde bilerek oluşturulan sekiz kenarlı açıklık](docs/images/17-polygon-opening-before.png) | ![Mesh değişmeden önerilen üçgenler](docs/images/18-polygon-opening-preview.png) | ![Yalnız belge kopyasına uygulanan üçgenler](docs/images/19-polygon-opening-applied.png) |
+
+*Yakın çekim için kopyadaki üç komşu atlet dörtgeni bilerek silinip sekiz kenarlı açıklık oluşturuldu. Önizlemede 27.696 gerçek yüz aynı kaldı; Uygula altı üçgen ekleyip 27.702 yüze çıkardı. Bu gösterimde canlı asıl model değiştirilmedi.*
+
+Önizleme GPU oturum verisidir; dışa aktarılmaz. Seçim ve kamera değişebilir; nokta konumu, topoloji, gizlilik, malzeme, UV veya obje dönüşümü değişirse öneri geçersiz olur. Boyut sınırını değiştirince yeniden önizle. Yeni üçgenler komşu malzemeyi ve kopyada hesaplanan UV verisini alır; **boyamadan önce yeni UV'leri kontrol et**. Araç smoothing, remesh, nokta birleştirme, otomatik unwrap veya anlamsal delik tanıma yapmaz.
+
+## 10.1. Sıkı küçük delik modu
 
 Tarama panelinde **En büyük açıklık** ayarını kontrol et ve **Onarılabilirleri kontrol et** düğmesine bas. Bu kontrol geometriye dokunmadan uygun/atlanan sayısını verir. **Uygun küçük delikleri kapat**, taramadaki uygun halkaları; **Yalnız listedeki açıklığı onar**, yalnız etkin satırı işler.
 
-Varsayılan boyut sınırı **0,02 dünya birimidir**; Blender'ın varsayılan metre ölçeğinde 2 cm. Yalnız görünür, dışbükey, yeterince düz **3 veya 4 kenarlı kapalı halkalar** kabul edilir. Karışık komşu malzeme, tutarsız yüz yönü, yakındaki çok-yüzlü kenar, aşırı boyut, bozuk/eğri sınır ve mevcut yüzeyle çakışma durumları atlanır; nedenleri listelenir.
+Ayrı **Sıkı küçük delik modu**, önceki temkinli davranışı korur. Varsayılan boyut sınırı **0,02 dünya birimidir**; Blender'ın varsayılan metre ölçeğinde 2 cm. Yalnız görünür, dışbükey, yeterince düz **3 veya 4 kenarlı kapalı halkalar** kabul edilir. Bu bölümdeki **Onarılabilirleri kontrol et** sayısal kontroldür; yukarıdaki mor geometri önizlemesinden ayrıdır. Karışık komşu malzeme, tutarsız yüz yönü, yakındaki çok-yüzlü kenar, aşırı boyut, bozuk/eğri sınır ve mevcut yüzeyle çakışma durumları atlanır; nedenleri listelenir.
 
 | Önce: kontrollü eksik üçgen | Sonra: bir yüz eklendi |
 |---|---|
@@ -213,11 +235,11 @@ Nokta birleştirmek ile eksik yüz kapatmak ayrı işlerdir. Birleştirme, doğr
 
 ## Testler ve dosyalar
 
-Blender 5.2.3 arka plan testinde **45 testin 44'ü geçti, yalnız GUI gerektiren 1 test atlandı**. Seçim, atama ve geri alma, önizlemenin dışa aktarım verilerini koruması, kırmızı işaretler, gizleme/undo, tarama, onarımda malzeme/normal/UV ve birleştirme geri alması denetlenir. Komut ve kapsam için [geliştirme rehberine](docs/DEVELOPMENT.md) bak.
+Blender 5.2.3 arka plan testinde **53 testin 52'si geçti, yalnız GUI gerektiren 1 test atlandı**. Seçim, atama ve geri alma, önizlemenin dışa aktarım verilerini koruması, kırmızı işaretler, gizleme/undo, tarama, onarımda malzeme/normal/UV ve birleştirme geri alması denetlenir. Komut ve kapsam için [geliştirme rehberine](docs/DEVELOPMENT.md) bak.
 
 ```text
 kolay_malzeme_tr.py         Eklenti kaynağı; sabit modül adı
-dist/FacePilot-1.6.0.zip    Kurulabilir tek dosyalı eklenti
+dist/FacePilot-1.7.0.zip    Kurulabilir tek dosyalı eklenti
 README.md / README.tr.md   Tam İngilizce / Türkçe rehberler
 docs/images/              Gerçek Blender ekran görüntüleri
 docs/brand/               FacePilot logo dosyaları
