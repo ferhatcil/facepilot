@@ -105,6 +105,94 @@ class AddonTests(unittest.TestCase):
         self.assertEqual(self.selected(), {1})
         self.assertTrue(self.bm.faces[3].hide)
 
+    def test_material_remove_all_faces_including_hidden_preserves_mesh_and_other_users(self):
+        self.assertTrue(hasattr(self.addon,'KMTR_OT_material_remove'),'Material removal tool is missing')
+        source=self.obj.data.materials[1];target=self.obj.data.materials[0]
+        other_mesh=bpy.data.meshes.new('OtherMaterialUser');other_mesh.materials.append(source)
+        other=bpy.data.objects.new('OtherMaterialUser',other_mesh);bpy.context.collection.objects.link(other)
+        self.obj.active_material_index=1;before=self.fingerprint()
+        flags=tuple((f.select,f.hide) for f in self.bm.faces)
+        self.assertEqual(bpy.ops.kmtr.material_remove(target='MAIN'),{'FINISHED'})
+        self.bm=bmesh.from_edit_mesh(self.obj.data);self.bm.faces.ensure_lookup_table()
+        self.assertEqual(list(self.obj.data.materials),[target]);self.assertEqual(len(self.bm.faces),4)
+        self.assertTrue(all(f.material_index==0 for f in self.bm.faces))
+        self.assertEqual(tuple((f.select,f.hide) for f in self.bm.faces),flags)
+        after=self.fingerprint()
+        for index in (0,2,3):self.assertEqual(before[index],after[index])
+        self.assertEqual(list(other_mesh.materials),[source]);self.assertIsNotNone(bpy.data.materials.get(source.name))
+
+    def test_material_remove_duplicate_slots_and_target_index_shift(self):
+        self.assertTrue(hasattr(self.addon,'KMTR_OT_material_remove'),'Material removal tool is missing')
+        a,b=list(self.obj.data.materials);c=bpy.data.materials.new('Target')
+        self.obj.data.materials.append(a);self.obj.data.materials.append(c)
+        for f,i in zip(self.bm.faces,(0,1,2,3)):f.material_index=i
+        bmesh.update_edit_mesh(self.obj.data);self.obj.active_material_index=0
+        self.assertEqual(bpy.ops.kmtr.material_remove(target='SLOT_3'),{'FINISHED'})
+        self.bm=bmesh.from_edit_mesh(self.obj.data);self.bm.faces.ensure_lookup_table()
+        self.assertEqual(list(self.obj.data.materials),[b,c])
+        self.assertEqual([f.material_index for f in self.bm.faces],[1,0,1,1])
+        self.assertEqual(self.obj.active_material_index,1)
+
+    def test_material_remove_object_linked_slots_keep_effective_target(self):
+        self.obj.data.materials.append(bpy.data.materials.new('DataThird'))
+        mats=[bpy.data.materials.new(name) for name in ('ObjectA','ObjectSource','ObjectTarget')]
+        for slot,mat in zip(self.obj.material_slots,mats):slot.link='OBJECT';slot.material=mat
+        for f,i in zip(self.bm.faces,(0,1,2,1)):f.material_index=i
+        bmesh.update_edit_mesh(self.obj.data);self.obj.active_material_index=1
+        self.assertEqual(bpy.ops.kmtr.material_remove(target='SLOT_2'),{'FINISHED'})
+        self.bm=bmesh.from_edit_mesh(self.obj.data);self.bm.faces.ensure_lookup_table()
+        self.assertEqual([s.material for s in self.obj.material_slots],[mats[0],mats[2]])
+        self.assertTrue(all(s.link=='OBJECT' for s in self.obj.material_slots))
+        self.assertEqual([f.material_index for f in self.bm.faces],[0,1,1,1])
+
+    def test_material_remove_invalid_target_and_shared_mesh_leave_data_and_preview(self):
+        self.assertTrue(hasattr(self.addon,'KMTR_OT_material_remove'),'Material removal tool is missing')
+        self.make_curved_hex_hole();bpy.ops.kmtr.repair_preview(action='BUILD',scope='ALL')
+        self.obj.active_material_index=1;plan=self.addon._runtime['repair_preview'];before=self.fingerprint()
+        for token in ('SLOT_1','SLOT_999','invalid'):
+            self.assertEqual(bpy.ops.kmtr.material_remove(target=token),{'CANCELLED'})
+            self.assertEqual(self.fingerprint(),before);self.assertIs(self.addon._runtime['repair_preview'],plan)
+        other=bpy.data.objects.new('SharedMesh',self.obj.data);bpy.context.collection.objects.link(other)
+        self.assertEqual(bpy.ops.kmtr.material_remove(target='MAIN'),{'CANCELLED'})
+        self.assertEqual(self.fingerprint(),before);self.assertIs(self.addon._runtime['repair_preview'],plan)
+        bpy.data.objects.remove(other,do_unlink=True)
+        bpy.ops.kmtr.material_remove(target='MAIN')
+        self.assertIsNone(self.addon._runtime['repair_preview'])
+
+    def test_material_remove_empty_slot_and_reject_last_used_slot(self):
+        self.assertTrue(hasattr(self.addon,'KMTR_OT_material_remove'),'Material removal tool is missing')
+        self.obj.data.materials.append(bpy.data.materials.new('EmptySource'));self.obj.active_material_index=2
+        self.assertEqual(bpy.ops.kmtr.material_remove(target='MAIN'),{'FINISHED'})
+        self.obj.active_material_index=1;bpy.ops.kmtr.material_remove(target='MAIN')
+        self.obj.active_material_index=0
+        self.assertEqual(bpy.ops.kmtr.material_remove(target='MAIN'),{'CANCELLED'})
+        self.assertEqual(len(self.obj.data.materials),1)
+        self.bm=bmesh.from_edit_mesh(self.obj.data);self.bm.faces.ensure_lookup_table()
+        bmesh.ops.delete(self.bm,geom=list(self.bm.verts),context='VERTS');bmesh.update_edit_mesh(self.obj.data)
+        self.assertEqual(bpy.ops.kmtr.material_remove(target='MAIN'),{'FINISHED'})
+        self.assertEqual(len(self.obj.data.materials),0)
+
+    def test_material_remove_undo_and_isolation_restore(self):
+        self.assertTrue(hasattr(self.addon,'KMTR_OT_material_remove'),'Material removal tool is missing')
+        self.select({1});bpy.ops.kmtr.isolate(action='HIDE');before=self.fingerprint()
+        self.obj.active_material_index=1;bpy.ops.ed.undo_push(message='Before material removal')
+        bpy.ops.kmtr.material_remove(target='MAIN')
+        self.bm=bmesh.from_edit_mesh(self.obj.data);self.bm.faces.ensure_lookup_table()
+        bpy.ops.ed.undo()
+        self.assertEqual(bpy.context.object.mode,'OBJECT')
+        self.assertEqual(len(bpy.context.object.data.materials),2)
+        bpy.ops.ed.redo()
+        self.assertEqual(len(bpy.context.object.data.materials),1)
+        self.assertTrue(all(f.material_index==0 for f in bpy.context.object.data.polygons))
+        bpy.ops.ed.undo()
+        bpy.ops.object.mode_set(mode='EDIT');self.obj=bpy.context.edit_object
+        self.bm=bmesh.from_edit_mesh(self.obj.data);self.bm.faces.ensure_lookup_table()
+        after=self.fingerprint()
+        for index in (0,1,3,4):self.assertEqual(after[index],before[index])
+        self.assertEqual(sorted(after[2]),sorted(before[2]))
+        self.assertEqual(bpy.ops.kmtr.isolate(action='RESTORE'),{'FINISHED'})
+        self.assertEqual([f.hide for f in self.bm.faces],[False,False,False,True])
+
     def test_material_visibility_toggle_preserves_other_materials_and_export_data(self):
         self.assertTrue(hasattr(self.addon,'KMTR_OT_material_visibility'),'Material visibility tool is missing')
         before=self.fingerprint();self.obj.active_material_index=1

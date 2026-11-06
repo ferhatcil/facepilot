@@ -28,6 +28,8 @@ Belgelerde, kullanıcının etkin karakterinden alınan geçici mesh kopyasını
 | `23-openings-panel-en.png` | English scan list, ignore action and preview controls / İngilizce tarama, yoksayma ve önizleme araçları |
 | `24-material-hidden.png` | v1.10 belt hidden with material eye; other materials remain visible / Malzeme gözüyle kemer gizli, diğer malzemeler görünür |
 | `25-material-shown.png` | Belt shown again without auto-selection / Kemer yeniden görünür, otomatik seçim yapılmadı |
+| `26-remove-material-tr.png` | Controlled one-face source material and removal target / Tek yüzlük örnek malzeme ve silme hedefi |
+| `27-remove-material-en.png` | English Remove material controls / İngilizce malzeme kaldırma düğmeleri |
 
 For cleaner screenshots, floor/axis/relationship lines and seam display were disabled and the camera was adjusted in the disposable session. The red-mark fill remained 0. Material assignments temporarily changed for the transfer example were restored before later examples. The sidebar was scrolled and unrelated panels collapsed/omitted when isolating a tool group; the shipped controls and their draw code were unchanged.
 

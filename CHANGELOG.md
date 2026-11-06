@@ -1,5 +1,15 @@
 # Changelog / Sürüm geçmişi
 
+## 1.11.0 · Remove material
+
+- Transfer all source faces, including hidden/unselected ones, then remove source slots from the current object.
+- Chosen target or first/main slot; duplicate source slots handled together; native slot removal preserves OBJECT/DATA links.
+- Geometry, UV, visibility/selection, other objects and global material datablocks preserved; invalid/same targets and shared mesh data rejected.
+- Full Object Mode undo snapshots restore slots and assignments together. Undo/redo returns to Object Mode; Tab resumes editing.
+- 71 real Blender tests: 70 passed, 1 GUI-only skipped; bilingual guide and UI screenshots.
+
+Tek yüz kalmış malzemeyi hedefe aktararak listeden kaldırma. Ctrl+Z geri alır; ardından Tab ile düzenlemeye dönülür.
+
 ## 1.10.0 · Per-material visibility
 
 - Material row eye toggles and visible/total counts; active-material Show/Hide buttons.

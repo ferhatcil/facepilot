@@ -1,7 +1,7 @@
 bl_info = {
     'name': 'Kolay Malzeme TR',
     'author': 'Codex',
-    'version': (1, 10, 0),
+    'version': (1, 11, 0),
     'blender': (4, 2, 0),
     'location': '3D View > N > FacePilot',
     'description': 'Türkçe yüz seçimi, malzeme atama ve dışa aktarılmayan karartma önizlemesi',
@@ -50,6 +50,11 @@ PREVIEW_ITEMS = [
 
 
 UI_EN = {
+    'Malzemeyi kaldır':'Remove material','Silme hedefi':'Removal target',
+    'Yüzler hedefe taşınır; geometri silinmez.':'Faces move to target; geometry is kept.',
+    'Önce mesh verisini tek kullanıcılı yapın (Object > Relations > Make Single User > Object & Data)':'Make mesh data single-user first (Object > Relations > Make Single User > Object & Data)',
+    'Bağlı kütüphane verisi değiştirilemez':'Linked library data cannot be edited',
+    'Malzeme kaldırıldı; yüzler hedefe aktarıldı. Ctrl+Z: geri al':'Material removed; faces moved to target. Ctrl+Z: undo',
     'Göster':'Show','Gizle':'Hide','Göster / gizle':'Show / hide','Malzemeyi göster/gizle':'Show/hide material',
     'Malzeme gizlendi':'Material hidden','Malzeme gösterildi':'Material shown',
     'Geçerli bir malzeme yuvası seçin':'Choose a valid material slot',
@@ -198,6 +203,7 @@ UI_EN = {
 
 OP_HELP_EN={
     'kmtr.material_visibility':'Show or hide faces using this material in the current mesh. Other materials stay unchanged. An open eye hides all; a closed eye shows all. Ctrl+Z: undo.',
+    'kmtr.material_remove':'Move ALL faces of the active material (including hidden faces) to the chosen target, then remove its slots from this object. Geometry and other objects keep their materials. Ctrl+Z: undo.',
     'kmtr.hole_scan':'List connected open boundary edges. Intentional openings can appear; no geometry or UV changes.',
     'kmtr.hole_ignore':'Exclude an opening from the list, cyan overlay and repairs. Restore ignored openings brings it back.',
     'kmtr.hole_focus':'Select the listed boundary edges and frame them without adding faces.',
@@ -1624,6 +1630,60 @@ class KMTR_OT_material_visibility(KMTR_EditOperator,bpy.types.Operator):
         return {'FINISHED'}
 
 
+class KMTR_OT_material_remove(KMTR_EditOperator,bpy.types.Operator):
+    bl_idname='kmtr.material_remove'
+    bl_label='Malzemeyi kaldır'
+    bl_description='Gizliler dahil bu malzemenin TÜM yüzlerini hedefe taşır, bu nesnedeki yuvalarını kaldırır. Geometri silinmez; diğer nesneler korunur. Ctrl+Z: geri al'
+    # Slot arrays are not part of mesh Edit Mode undo. Record full Object Mode
+    # snapshots explicitly instead of creating an incomplete edit-only undo step.
+    bl_options={'REGISTER'}
+    target: StringProperty(default='',options={'HIDDEN'})
+
+    def execute(self,context):
+        obj,bm=_edit_mesh(context)
+        source=obj.active_material_index
+        if not 0<=source<len(obj.material_slots):
+            self.report({'WARNING'},_t('Geçerli bir malzeme yuvası seçin',context));return {'CANCELLED'}
+        if obj.data.library or obj.library:
+            self.report({'WARNING'},_t('Bağlı kütüphane verisi değiştirilemez',context));return {'CANCELLED'}
+        if obj.data.users>1:
+            self.report({'WARNING'},_t('Önce mesh verisini tek kullanıcılı yapın (Object > Relations > Make Single User > Object & Data)',context));return {'CANCELLED'}
+        slots=_material_slot_group(obj,source)
+        assigned=any(f.material_index in slots for f in bm.faces)
+        token=self.target or context.window_manager.kmtr_settings.move_target
+        destination=None
+        if assigned:
+            try:destination=0 if token=='MAIN' else int(token.removeprefix('SLOT_'))
+            except ValueError:
+                self.report({'WARNING'},_t('Geçerli bir hedef malzeme seçin',context));return {'CANCELLED'}
+            if not 0<=destination<len(obj.material_slots):
+                self.report({'WARNING'},_t('Geçerli bir hedef malzeme seçin',context));return {'CANCELLED'}
+            if destination in slots:
+                self.report({'WARNING'},_t('Kaynak ve hedef aynı. Farklı bir hedef malzeme seçin',context));return {'CANCELLED'}
+        remaining=[i for i in range(len(obj.material_slots)) if i not in slots]
+        mapping={old:new for new,old in enumerate(remaining)}
+        assignments=[mapping.get(destination if f.material_index in slots else f.material_index,0) for f in bm.faces]
+        clear_repair_preview();clear_red_marks()
+        # Blender forbids removing material slots in Edit Mode. Commit the edit
+        # mesh, remove slots, then restore exact assignments after Blender's remap.
+        bpy.ops.object.mode_set(mode='OBJECT')
+        bpy.ops.ed.undo_push(message=_t('Malzemeyi kaldır',context))
+        try:
+            for index in sorted(slots,reverse=True):
+                obj.active_material_index=index
+                bpy.ops.object.material_slot_remove('EXEC_DEFAULT',False)
+            for face,index in zip(obj.data.polygons,assignments):face.material_index=index
+            obj.active_material_index=mapping.get(destination,min(source,max(len(remaining)-1,0)))
+            bpy.ops.ed.undo_push(message=_t('Malzeme kaldırıldı; yüzler hedefe aktarıldı. Ctrl+Z: geri al',context))
+        finally:
+            bpy.ops.object.mode_set(mode='EDIT')
+        context.window_manager.kmtr_settings.move_target='MAIN'
+        _runtime.update(material_visibility_rows=None,hole_scan=None,hole_dirty=True,geometry_dirty=True,signature=None)
+        _flush(obj)
+        self.report({'INFO'},_t('Malzeme kaldırıldı; yüzler hedefe aktarıldı. Ctrl+Z: geri al',context))
+        return {'FINISHED'}
+
+
 class KMTR_OT_material_select(KMTR_EditOperator, bpy.types.Operator):
     bl_idname = 'kmtr.material_select'
     bl_label = 'Malzemeden yüz seç'
@@ -2251,6 +2311,9 @@ class KMTR_PT_panel(bpy.types.Panel):
             row=body.row(align=True)
             _op(row,'kmtr.material_visibility','Göster',action='SHOW',index=-1)
             _op(row,'kmtr.material_visibility','Gizle',action='HIDE',index=-1)
+            body.label(text='Silme hedefi')
+            body.prop(s,'move_target',text='')
+            _op(body,'kmtr.material_remove','Malzemeyi kaldır',target=s.move_target)
             row=body.row(align=True)
             _op(row,'kmtr.material_select','Seç',action='REPLACE')
             _op(row,'kmtr.material_select','Ekle',action='ADD')
@@ -2400,7 +2463,7 @@ def _on_update(*args):
 
 
 CLASSES = (KMTR_Preferences, KMTR_HoleItem, KMTR_Settings, KMTR_OT_hole_scan, KMTR_OT_hole_ignore, KMTR_OT_hole_focus, KMTR_OT_repair_preview, KMTR_OT_hole_repair, KMTR_OT_merge_selected,
-           KMTR_OT_material_visibility, KMTR_OT_material_select, KMTR_OT_material_color, KMTR_OT_remove_from_material, KMTR_OT_smart_select,
+           KMTR_OT_material_visibility, KMTR_OT_material_remove, KMTR_OT_material_select, KMTR_OT_material_color, KMTR_OT_remove_from_material, KMTR_OT_smart_select,
            KMTR_OT_red_action, KMTR_OT_red_paint,
            KMTR_OT_selection_action, KMTR_OT_brush,
            KMTR_OT_selection_memory, KMTR_OT_isolate, KMTR_OT_preview,

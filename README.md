@@ -10,7 +10,7 @@
 <p align="center">
   <a href="README.md"><strong>English</strong></a> ·
   <a href="README.tr.md"><strong>Türkçe</strong></a> ·
-  <a href="dist/FacePilot-1.10.0.zip">Download v1.10.0</a> ·
+  <a href="dist/FacePilot-1.11.0.zip">Download v1.11.0</a> ·
   <a href="docs/SHORTCUTS.md">Shortcut reference</a> ·
   <a href="docs/DEVELOPMENT.md">Development & tests</a>
 </p>
@@ -38,7 +38,7 @@ The project name is **FacePilot**. The installed add-on retains the name **Kolay
 
 ## Install in a minute
 
-1. Download [FacePilot-1.10.0.zip](dist/FacePilot-1.10.0.zip). Use the add-on ZIP, rather than GitHub's whole-repository ZIP.
+1. Download [FacePilot-1.11.0.zip](dist/FacePilot-1.11.0.zip). Use the add-on ZIP, rather than GitHub's whole-repository ZIP.
 2. In Blender, open **Edit → Preferences → Add-ons → menu → Install from Disk**.
 3. Choose the ZIP and enable **Kolay Malzeme TR**. Installing [kolay_malzeme_tr.py](kolay_malzeme_tr.py) directly also works.
 4. Select **one mesh**, press **Tab** for Edit Mode, then **N → FacePilot** in the 3D Viewport.
@@ -89,6 +89,14 @@ Each material row now has an **eye icon** and visible-face count. The active mat
 ![The belt hidden while other materials stay visible](docs/images/24-material-hidden.png)
 
 Other materials keep their current visibility. Showing does not select newly revealed faces; hiding deselects hidden faces as Blender normally does. Duplicate slots referencing the same material share one visibility state. This changes edit-mesh visibility, not geometry, UVs or material assignments. **Ctrl+Z** undoes it. Existing isolation can still be restored with **Geri göster (Restore)**; that restores the pre-isolation visibility, including any subsequent eye-button changes. A visibility change clears pending patch previews; rebuild before repair.
+
+## 1.2. Remove a material · new in 1.11
+
+In **Selection**, choose the source material, choose **Removal target** (default: slot 1), then click **Remove material**. Even a single leftover face moves to the target, together with all hidden or unselected faces of that material. Its slots disappear from this object; geometry, UVs, visibility and selection stay intact. Duplicate slots for the same material are removed together. Other objects and the global material datablock are kept.
+
+![Remove a one-face material in the English panel](docs/images/27-remove-material-en.png)
+
+Choose a different target when removing slot 1. Empty materials need no target; a final material with faces needs another material first. Shared mesh data is rejected: make it single-user before removal. A successful removal clears pending repair previews and red marks. **Ctrl+Z** restores slots and assignments together; undo/redo returns Blender to Object Mode, so press **Tab** to resume editing. This command uses full Object Mode undo snapshots because mesh Edit Mode undo does not store material slot arrays.
 
 ## 2. Pick a region with Smart Selection
 
@@ -272,11 +280,11 @@ Welding points and filling a missing face solve different problems. A weld does 
 
 ## Quality & project files
 
-The Blender 5.2.3 background suite currently reports **65 tests: 64 passed, 1 GUI-only test skipped**. It covers selection, material transfer/undo, preview export invariance, red-mark lifecycle, isolation/undo, boundary scanning, repair/material/normal/UV behavior and merge undo. See [development instructions](docs/DEVELOPMENT.md) for the exact command and the limits of this evidence.
+The Blender 5.2.3 background suite currently reports **71 tests: 70 passed, 1 GUI-only test skipped**. It covers selection, material transfer/undo, preview export invariance, red-mark lifecycle, isolation/undo, boundary scanning, repair/material/normal/UV behavior and merge undo. See [development instructions](docs/DEVELOPMENT.md) for the exact command and the limits of this evidence.
 
 ```text
 kolay_malzeme_tr.py         Add-on source; stable module name
-dist/FacePilot-1.10.0.zip    Installable single-file add-on
+dist/FacePilot-1.11.0.zip    Installable single-file add-on
 README.md / README.tr.md   Complete English / Turkish guides
 docs/images/              Actual Blender screenshots
 docs/brand/               FacePilot logo artwork

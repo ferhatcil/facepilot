@@ -10,7 +10,7 @@
 <p align="center">
   <a href="README.tr.md"><strong>Türkçe</strong></a> ·
   <a href="README.md"><strong>English</strong></a> ·
-  <a href="dist/FacePilot-1.10.0.zip">v1.10.0 indir</a> ·
+  <a href="dist/FacePilot-1.11.0.zip">v1.11.0 indir</a> ·
   <a href="docs/SHORTCUTS.md">Kısayollar</a> ·
   <a href="docs/DEVELOPMENT.md">Geliştirme ve testler</a>
 </p>
@@ -38,7 +38,7 @@ Projenin İngilizce adı **FacePilot**. Blender'daki eklenti adı **Kolay Malzem
 
 ## Bir dakikada kurulum
 
-1. [FacePilot-1.10.0.zip](dist/FacePilot-1.10.0.zip) dosyasını indir. GitHub'ın bütün repo ZIP'i yerine bu eklenti ZIP'ini kullan.
+1. [FacePilot-1.11.0.zip](dist/FacePilot-1.11.0.zip) dosyasını indir. GitHub'ın bütün repo ZIP'i yerine bu eklenti ZIP'ini kullan.
 2. Blender'da **Edit → Preferences → Add-ons → menü → Install from Disk** yolunu aç.
 3. ZIP'i seç ve **Kolay Malzeme TR** eklentisini etkinleştir. [kolay_malzeme_tr.py](kolay_malzeme_tr.py) dosyasını doğrudan kurmak da mümkün.
 4. **Tek bir mesh** seç, **Tab** ile Düzenleme Modu'na geç, 3B Görünüm'de **N → FacePilot** sekmesini aç.
@@ -82,6 +82,14 @@ Her malzeme satırında **göz simgesi** ve görünür yüz sayısı bulunur. Et
 ![Diğer malzemeler görünürken yalnız kemerin gizlenmesi](docs/images/24-material-hidden.png)
 
 Diğer malzemelerin görünürlüğü korunur. Gösterilen yüzler otomatik seçilmez; gizlenen yüzlerin seçimi Blender'ın normal davranışıyla kalkar. Aynı malzemeye bağlı yinelenen yuvalar birlikte kontrol edilir. Geometri, UV ve gerçek atama değişmez; yalnız düzenleme görünürlüğü değişir. **Ctrl+Z** geri alır. Mevcut izolasyonun **Geri göster** düğmesi hâlâ çalışır; gözle sonradan yaptığın değişiklikler dahil izolasyon öncesi görünürlüğü geri getirir. Görünürlük değişince bekleyen yama önizlemesi temizlenir; onarımdan önce yeniden önizle.
+
+## 1.2. Malzemeyi kaldır · 1.11 yeniliği
+
+**Seçim** bölümünde kaldırılacak malzemeyi seç, **Silme hedefi** belirle (varsayılan: 1. ana yuva), ardından **Malzemeyi kaldır** düğmesine bas. Tek bir yüz kalmış olsa bile gizli ve seçilmemiş yüzler dahil tamamı hedefe taşınır. Malzemenin bu nesnedeki yuvaları kalkar; geometri, UV, görünürlük ve seçim korunur. Aynı malzemenin yinelenen yuvaları birlikte kaldırılır. Diğer nesnelerdeki kullanımlar ve asıl malzeme verisi korunur.
+
+![Tek yüz kalmış malzemeyi Türkçe panelden kaldırma](docs/images/26-remove-material-tr.png)
+
+İlk yuvayı kaldırırken farklı bir hedef seç. Boş malzemeyi hedefsiz kaldırabilirsin; yüz atanmış son malzeme için önce başka malzeme gerekir. Mesh verisini başka nesneler paylaşıyorsa önce tek kullanıcılı yapmalısın. Başarılı kaldırma bekleyen onarım önizlemesini ve kırmızı işaretleri temizler. **Ctrl+Z** yuvaları ve atamaları birlikte geri getirir; geri alma/yineleme Blender'ı Nesne Modu'na döndürür. **Tab** ile düzenlemeye devam et. Malzeme yuvaları mesh düzenleme geri alma kaydına girmediğinden bu işlem tam Nesne Modu kayıtlarını kullanır.
 
 ## 2. Akıllı seçimle bölgeye tıkla
 
@@ -265,11 +273,11 @@ Nokta birleştirmek ile eksik yüz kapatmak ayrı işlerdir. Birleştirme, doğr
 
 ## Testler ve dosyalar
 
-Blender 5.2.3 arka plan testinde **65 testin 64'ü geçti, yalnız GUI gerektiren 1 test atlandı**. Seçim, atama ve geri alma, önizlemenin dışa aktarım verilerini koruması, kırmızı işaretler, gizleme/undo, tarama, onarımda malzeme/normal/UV ve birleştirme geri alması denetlenir. Komut ve kapsam için [geliştirme rehberine](docs/DEVELOPMENT.md) bak.
+Blender 5.2.3 arka plan testinde **71 testin 70'i geçti, yalnız GUI gerektiren 1 test atlandı**. Seçim, atama ve geri alma, önizlemenin dışa aktarım verilerini koruması, kırmızı işaretler, gizleme/undo, tarama, onarımda malzeme/normal/UV ve birleştirme geri alması denetlenir. Komut ve kapsam için [geliştirme rehberine](docs/DEVELOPMENT.md) bak.
 
 ```text
 kolay_malzeme_tr.py         Eklenti kaynağı; sabit modül adı
-dist/FacePilot-1.10.0.zip    Kurulabilir tek dosyalı eklenti
+dist/FacePilot-1.11.0.zip    Kurulabilir tek dosyalı eklenti
 README.md / README.tr.md   Tam İngilizce / Türkçe rehberler
 docs/images/              Gerçek Blender ekran görüntüleri
 docs/brand/               FacePilot logo dosyaları

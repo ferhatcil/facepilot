@@ -1,4 +1,14 @@
-KOLAY MALZEME TR / FACEPILOT — 1.10.0
+KOLAY MALZEME TR / FACEPILOT — 1.11.0
+
+YENİ: MALZEMEYİ KALDIR
+Seçim > kaynak malzeme > Silme hedefi > Malzemeyi kaldır.
+Gizli/seçilmemiş tüm yüzler hedefe taşınır; geometri ve UV silinmez.
+Yinelenen kaynak yuvalar birlikte kalkar; diğer nesneler ve asıl malzeme
+verisi korunur. Hedef kaynakla aynı olamaz. Boş malzeme hedefsiz kalkar;
+yüz atanmış son malzemeyi kaldırmak için başka bir hedef gerekir.
+Paylaşılan mesh verisini önce tek kullanıcılı yapın. Başarılı kaldırmada
+mor yama ve kırmızı işaretler temizlenir. Ctrl+Z yuvalar ve atamaları geri
+getirir. Geri alma/yineleme Nesne Modu'na döner; Tab ile devam edin.
 
 YENİ: MALZEMELERİ TEK TEK GÖSTER / GİZLE
 Seçim bölümünde her malzemenin yanında göz simgesi ve görünür yüz sayısı
