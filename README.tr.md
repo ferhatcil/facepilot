@@ -31,10 +31,24 @@ Projenin İngilizce adı **FacePilot**. Blender'daki eklenti adı **Kolay Malzem
 |---|---|---|
 | Seç ve düzelt | Malzemeden seçim, akıllı bölge, fırça +/−, büyüt/küçült, seçim hafızası | Yalnız seçim |
 | Net gör | Her malzemeye rastgele renk, tek malzeme rengi, dört siyah önizleme | Yalnız ekran |
+| Göster ve gizle | Malzeme gözleri, görünür/toplam sayıları, yalıt/geri göster | Düzenleme görünürlüğü; yüzler mesh'te kalır |
 | Kırmızı işaretle | Saydam kırmızı çerçeveler, aç/kapat, sil, Clear | İşaretler geçici; **taşıma** gerçek atamadır |
 | Yeniden ata | İlk yuvaya veya seçilen hedefe taşı; mevcut/yeni malzeme ata | Gerçek malzeme ataması |
+| Malzemeyi kaldır | Tüm yüzlerini hedefe aktar, kaynak yuvaları bu nesneden kaldır | Gerçek atama ve yuva değişikliği; geometri korunur |
 | İncele | Açık sınır listesi, turkuaz çizgiler, bölgeye yaklaş | Tarama değişiklik yapmaz; odaklama seçimi/görünümü değiştirir |
-| Onar | Uygun küçük deliği kapat, seçili noktaları birleştir | Gerçek geometri; **Ctrl+Z** ile geri alınır |
+| Onar | Mor Uygula/İptal önerisi, sıkı küçük delik kapatma, seçili nokta birleştirme | Önizleme geçici; Uygula/kapat/birleştir geometriyi değiştirir |
+
+## Aradığın işleme git
+
+| Yapmak istediğin | İlgili bölüm |
+|---|---|
+| Çok az yüz kalmış malzemenin nerede olduğunu gör | [Seçim](#1-bir-malzemenin-tüm-yüzlerini-seç), [göster/gizle](#11-malzemeyi-göster--gizle--110-yeniliği), [yalıtma](#yalitma) |
+| Tek yüz kalmış malzemeyi kaldır | [Malzemeyi kaldır](#12-malzemeyi-kaldır--111-yeniliği) |
+| Fazla seçimi çıkar veya bağlı bölge seç | [Akıllı seçim](#2-akıllı-seçimle-bölgeye-tıkla), [ince ayar](#3-seçimi-ince-ayarla-ve-sakla) |
+| İstemediğin yüzleri işaretle ve başka malzemeye taşı | [Kırmızı düzeltme](#4-çıkarmak-istediklerini-saydam-kırmızı-işaretle), [hedefe taşıma](#5-yüzleri-seçtiğin-malzemeye-taşı-veya-yeni-malzeme-ata) |
+| Substance Painter öncesi malzemeleri ayırt et | [Önizleme renkleri](#6-bütün-malzemelere-tek-tıkla-farklı-renk-ver), [karartma](#7-gerçek-boya-sürmeden-diğer-yüzleri-karart) |
+| Açıklıkları listele, önemsizleri ele ve yamayı incele | [Tarama](#9-olası-eksik-yüzleri-ve-açıklıkları-listele), [yoksayma](#91-önemsiz-açıklıkları-yoksay--18-yeniliği), [onarım önizlemesi](#10-onarımı-uygulamadan-önce-önizle--17-yeniliği) |
+| Ctrl+Z sonrası modu veya görünümü geri getir | [Geri alma ve görünümü toparlama](#geri-alma-ve-görünümü-toparlama), [sorun giderme](#sorun-giderme) |
 
 ## Bir dakikada kurulum
 
@@ -45,13 +59,15 @@ Projenin İngilizce adı **FacePilot**. Blender'daki eklenti adı **Kolay Malzem
 
 **Blender 5.2.3 LTS** üzerinde test edildi. Eklentinin bildirdiği minimum sürüm 4.2'dir; daha eski desteklenen sürümler bu repodaki test çalışmasıyla doğrulanmadı. Harici Python paketi veya servis bağlantısı gerekmez.
 
+Mevcut kurulumu güncellemek için son eklenti ZIP'ini aynı menüden kur; eski panel yüklü kaldıysa Blender'ı yeniden başlat. Yan panel sekmesi **FacePilot**, Add-ons listesinde aranacak ad **Kolay Malzeme TR**.
+
 ## Düzen ve dil seçimi · 1.9 yeniliği
 
 **N → FacePilot** sekmesinin en üstünden **Türkçe / English** seç. Panel, menüler, işlem araç ipuçları, raporlar ve etkileşimli yönergeler seçilen dili kullanır. Blender'ın genel dili ve malzeme/obje adları değişmez. Tercih eklentinin Blender ayarlarında saklanır; otomatik ayar kaydı kapalıysa Save Preferences kullan.
 
 Üstte seçili/gizli yüz sayısı, etkin malzeme ve **Yalıt / Geri göster** kısayolları bulunur. Bölümler ayrı açılıp kapanır; dil değiştirince aynı bölüm durumu korunur. Geçici görünüm araçları ile gerçek atama/geometri işlemleri ayrı belirtilir.
 
-- **Seçim:** Malzeme listesi, fırça, büyüt/küçült ve seçim hafızası.
+- **Seçim:** Malzeme listesi, göster/gizle, hedefe aktararak malzeme kaldırma, fırça, büyüt/küçült ve seçim hafızası.
 - **Akıllı seçim:** Bölge seçimi, yöntem ve açı sınırı.
 - **Görsel önizleme:** Geçici renkler ve siyah karartma.
 - **Kırmızı düzeltme:** İşaretleme, temizleme ve ilk yuvaya taşıma.
@@ -90,6 +106,16 @@ Diğer malzemelerin görünürlüğü korunur. Gösterilen yüzler otomatik seç
 ![Tek yüz kalmış malzemeyi Türkçe panelden kaldırma](docs/images/26-remove-material-tr.png)
 
 İlk yuvayı kaldırırken farklı bir hedef seç. Boş malzemeyi hedefsiz kaldırabilirsin; yüz atanmış son malzeme için önce başka malzeme gerekir. Mesh verisini başka nesneler paylaşıyorsa önce tek kullanıcılı yapmalısın. Başarılı kaldırma bekleyen onarım önizlemesini ve kırmızı işaretleri temizler. **Ctrl+Z** yuvaları ve atamaları birlikte geri getirir; geri alma/yineleme Blender'ı Nesne Modu'na döndürür. **Tab** ile düzenlemeye devam et. Malzeme yuvaları mesh düzenleme geri alma kaydına girmediğinden bu işlem tam Nesne Modu kayıtlarını kullanır.
+
+**Örnek: uzun `tripo_…` adlı malzemede tek yüz kaldı.** Satırını seç, listenin altındaki **Görünür: 1 / 1** sayısını kontrol et. **0 / 1** yazıyorsa önce **Göster** kullan. **Seç → Yalıt** ile yüzün nerede olduğunu gör; **Geri göster** çevresini geri getirir. **Silme hedefi** seçip **Malzemeyi kaldır** düğmesine bas. Kaynak ilk yuvadaysa başka hedef seç: “Ana malzeme (1. yuva)” özel bir ad değil, listenin ilk sırasıdır. **Silme hedefi** ile **Malzeme atama → Hedef** aynı ayarı kullanır; kaldırma sonrasında hedef tekrar ilk yuvaya döner.
+
+| Düğme | Kaynak yüzlere/malzemeye ne olur? |
+|---|---|
+| Seçim içindeki **Çıkar** | Görünür kaynak yüzler seçimden çıkar; atama ve yuvalar kalır. |
+| Malzeme atama içindeki **Seçili yüzleri malzemeden çıkar** | Yalnız seçili görünür kaynak yüzler hedefe taşınır; kaynak yuvalar kalır. |
+| Seçim içindeki **Malzemeyi kaldır** | Gizli/seçilmemiş tüm kaynak yüzler taşınır; kaynak yuvalar bu nesneden kalkar. |
+
+Asıl malzeme verisi korunduğu için Blender'ın malzeme seçicisinde adı hâlâ görünebilir. Bu düğme mevcut nesnedeki kullanımını kaldırır; `.blend` dosyasındaki bütün malzeme verisini temizlemez. Mesh verisi paylaşılıyorsa Düzenleme Modu'ndan çıkıp **Object → Relations → Make Single User → Object & Data** kullan; **Tab** ile geri dön.
 
 ## 2. Akıllı seçimle bölgeye tıkla
 
@@ -181,6 +207,8 @@ Tek malzemeyi boyamak için listeden seç, **Önizleme rengi** ve **Renk yoğunl
 
 **Renkler, siyah önizleme ve kırmızı işaretler GPU ekran katmanlarıdır.** Base Color, shader düğümleri, dokular, UV'ler, vertex renkleri, yüz malzeme atamaları ve dışa aktarım verilerini değiştirmezler. Render, bake, FBX/OBJ/glTF veya Substance Painter'a gitmezler. Dosya yeniden açılınca veya eklenti kapatılınca temizlenirler. Gerçek atama ve onarım düğmeleri ise modeli değiştirir.
 
+<a id="yalitma"></a>
+
 ## 8. İnce çalışırken yalnız seçimi göster
 
 Panelin en üstündeki **Yalıt**, seçim dışını gizler. **Geri göster**, önceden gizli olanları koruyarak eski gizlilik durumuna döner. Seçim bölümündeki **Tüm gizlileri göster**, işlem öncesinde gizlediğin yüzler dahil her şeyi açar.
@@ -251,20 +279,42 @@ Yeni yüz komşu malzemeyi alır, yönü komşularına göre ayarlanır. Mevcut 
 
 ## 11. Yakın seçili noktaları birleştir
 
-**Yalnız seçili noktaları birleştir** bölümünde amaçladığın noktaları seç, **Birleştirme mesafesi** ayarla, başlangıçta **Yalnız bağlı geometri** açık kalsın ve **Seçili noktaları mesafeyle birleştir** düğmesine bas.
+**Gelişmiş onarım → Seçili noktaları birleştir** bölümünde amaçladığın noktaları seç, **Birleştirme mesafesi** ayarla, başlangıçta **Yalnız bağlı geometri** açık kalsın ve **Seçili noktaları mesafeyle birleştir** düğmesine bas.
 
 Yalnız seçili, görünür noktalar işlenir. Varsayılan eşik **0,00001 dünya birimi**. Bağlantılı geometri seçeneği birleştirmeyi bağlı geometriyle sınırlar; ayrı duran çakışık noktaları birleştirmek istiyorsan bilinçli olarak kapat. Eşit olmayan obje ölçeğinde yerel eşik temkinli küçültülür; bazı yakın çiftler birleşmeden kalabilir. **Ctrl+Z** geri alır.
 
 Nokta birleştirmek ile eksik yüz kapatmak ayrı işlerdir. Birleştirme, doğru yüz oluştuğunu, iyi edge flow'u veya doğru UV'yi garanti etmez. Her gerçek geometri işleminden sonra bölgeyi kontrol et.
+
+## Geri alma ve görünümü toparlama
+
+**Malzemeyi kaldır işleminden sonra Ctrl+Z, malzeme yuvalarını ve yüz atamalarını geri getirir; Blender Nesne Modu'na döner.** Bu yüzden FacePilot'un düzenleme düğmeleri pasifleşir. Gerekirse mesh'i seçip **Tab** ile Düzenleme Modu'na dön. **Ctrl+Shift+Z** kaldırmayı yineler. Yalnız modun değişmesi geometri silindiğini göstermez; malzeme listesini ve yüz sayılarını Düzenleme Modu'nda kontrol et.
+
+| Geri çevirmek istediğin | Kullanacağın araç |
+|---|---|
+| Malzeme kaldırma, gerçek atama, taşıma, uygulanmış yama veya birleştirme | **Ctrl+Z**; malzeme kaldırmayı geri aldıktan sonra **Tab** ile düzenlemeye dön. |
+| Malzeme gözüyle gizleme | **Göster** veya kapalı göz; bu görünürlük işlemi **Ctrl+Z** ile de geri alınır. |
+| FacePilot ile yalıtma | **Geri göster**, önceden gizli yüzleri korur. **Tüm gizlileri göster** onları da açar. |
+| Tek/tüm önizleme renkleri | Görsel önizleme içindeki **Rengi kaldır / Renkleri temizle**. |
+| Siyah karartma ve önizleme renkleri birlikte | **Normal görünüme dön**. Kırmızı işaretler ve yalıtma ayrı kalır. |
+| Bütün kırmızı düzeltme işaretleri | **Clear — tüm kırmızıları iptal et**; hareketi kapatmak için **Ctrl ile kırmızı işaretle** kutusunu kapat. |
+| Henüz uygulanmamış mor yama önerisi | Açıklıklar ve onarım içindeki **İptal**; henüz geometri eklenmemiştir. |
+
+Önizleme renkleri, işaretler, saklanan seçim, yoksayılan açıklıklar ve bekleyen öneriler oturum araçlarıdır. Bu geçici durumu korumak/geri getirmek için Ctrl+Z'ye veya `.blend` kaydına güvenme. Özellikle malzeme kaldırma kırmızı işaretleri ve bekleyen öneriyi temizler; sonradan malzeme işlemini geri almak bunları geri getirmez.
 
 ## Sorun giderme
 
 | Durum | Kontrol et |
 |---|---|
 | Düğmeler kullanılamıyor | Tek mesh seçip Düzenleme Modu'na geç; çoklu obje düzenleme desteklenmez. |
+| Malzeme kaldırmayı geri alınca panel pasifleşti | Blender Nesne Modu'na döndü. Mesh'i seçip **Tab** bas. |
+| Kaldırırken “Kaynak ve hedef aynı” diyor | Farklı **Silme hedefi** seç; ilk yuva kendisine aktarılamaz. Aynı kaynak malzemeye bağlı yinelenen yuvalar da kaynak sayılır. |
+| Malzemede 0 görünür yüz var | Listenin altındaki **görünür / toplam** sayısına bak. **0 / 1** bir gizli yüz, **0 / 0** boş yuva demektir. Gizliyse **Göster** kullan. |
+| Kaldırılan malzeme Blender seçicisinde hâlâ var | Asıl malzeme verisi korunur; yalnız bu nesnedeki kaynak yuvalar kaldırılmıştır. |
+| Göz düğmesi pasif | O malzemeye atanmış yüz yok; boş yuvada gösterilecek/gizlenecek yüz bulunmaz. |
 | Ctrl farklı davranıyor | İşin bitince **Ctrl ile kırmızı işaretle** kutusunu kapat. |
 | Yüz kırmızı işaretlenmiyor | İlk işaretlemede yüz görünür ve turuncu seçili olmalı. |
 | Onarılabilir delik yok | Atlama nedenlerini oku; açıklık büyük, düzensiz veya bilerek bırakılmış olabilir. Boyut sınırını körlemesine büyütme. |
+| Tarama açıklık buluyor ama sıkı modda 0 uygun diyor | Tarama bütün aday sınırları sayar. Sıkı mod yalnız uygun 3–4 kenarlı halkaları onarır; büyük/eğri sınır için **Açıklıklar ve onarım → Önizlemeli onarım** bölümünü incele. |
 | Hafıza/liste/işaretler temizlendi | Topoloji, mesh veya oturum değişmiş olabilir. Yeniden tara/seç. |
 | Renk seçiciyi değiştirdim ama olmadı | **Bu malzemeye renk ver** düğmesine yeniden bas. |
 | Önizleme renkleri görünmüyor | Siyah önizlemeyi kapat, gerekiyorsa izolasyondan çık, temel mesh'i incele. |

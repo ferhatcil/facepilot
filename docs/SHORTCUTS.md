@@ -5,7 +5,7 @@
 | Shortcut | Context | English | Türkçe |
 |---|---|---|---|
 | **Tab** | Blender mesh | Enter/leave Edit Mode | Düzenleme Modu'na gir/çık |
-| **N** | 3D Viewport | Open sidebar; choose Kolay Malzeme | Yan paneli aç; Kolay Malzeme'yi seç |
+| **N** | 3D Viewport | Open sidebar; choose FacePilot | Yan paneli aç; FacePilot'u seç |
 | **B / C** | Normal mesh selection | Box / circle selection | Kutu / daire seçimi |
 | **Alt+Z** | Viewport | Toggle X-Ray; off avoids through-selection | X-Ray aç/kapat; kapalıyken arkadakileri seçmez |
 | **Shift + click** | Smart Selection picking | Add clicked region | Tıklanan bölgeyi ekle |
@@ -16,6 +16,8 @@
 | **Ctrl+Shift + left-click/drag** | Ctrl red marking enabled | Always erase marks | Kırmızı işareti her durumda sil |
 | **Esc** | During a red stroke | Cancel current stroke | Devam eden kırmızı çizgiyi iptal et |
 | **Ctrl+Z** | After a real edit | Undo assignment, transfer, repair or weld | Atama, taşıma, onarım veya birleştirmeyi geri al |
+| **Ctrl+Z → Tab** | After Remove material | Restore slots/assignments, then resume Edit Mode | Yuvaları/atamaları geri getir, ardından Düzenleme Modu'na dön |
+| **Ctrl+Shift+Z** | After material-removal undo | Redo removal; Tab resumes editing afterward | Malzeme kaldırmayı yinele; ardından Tab ile düzenlemeye dön |
 
 **Context matters.** Smart Selection's Ctrl-click removes a region from the orange selection. The optional red-marking Ctrl gesture works after that picker finishes. Turn off **Ctrl ile kırmızı işaretle** when you want Blender's normal Ctrl shortcuts.
 

@@ -31,10 +31,24 @@ The project name is **FacePilot**. The installed add-on retains the name **Kolay
 |---|---|---|
 | Select & refine | Material selection, smart regions, brush add/subtract, grow/shrink, selection memory | Selection only |
 | See clearly | Random material colors, individual colors, four black preview modes | Viewport only |
+| Show & hide | Per-material eyes, visible/total counts, isolate/restore | Edit-mesh visibility; faces stay in the mesh |
 | Mark & correct | Transparent red correction outlines, toggle/erase/clear | Marking is temporary; **Transfer** changes material assignments |
 | Reassign | Move faces to slot 1 or another chosen material; assign/create a material | Real material assignments |
+| Remove material | Transfer all its faces to a target and remove its slots from this object | Real assignments and slot removal; geometry is kept |
 | Inspect | Open-boundary list, cyan overlay, focus on a listed region | Scan is read-only; focus changes selection/view |
-| Repair | Conservative small-hole filling and selected-vertex welding | Real geometry; **Ctrl+Z** to undo |
+| Repair | Violet Apply/Cancel proposals, strict small-hole filling and selected-vertex welding | Preview is temporary; Apply/fill/weld change geometry |
+
+## Find the right workflow
+
+| I want to… | Go to |
+|---|---|
+| Find a material's faces, including a tiny leftover group | [Select](#1-select-an-entire-material), [show/hide](#11-material-show--hide--new-in-110), [isolate](#8-isolate-fine-details) |
+| Remove a material with one face left | [Remove material](#12-remove-a-material--new-in-111) |
+| Deselect excess faces or pick a connected region | [Smart Selection](#2-pick-a-region-with-smart-selection), [refine](#3-refine-and-remember-a-selection) |
+| Mark unwanted faces and move them elsewhere | [Red corrections](#4-mark-corrections-in-transparent-red), [target transfer](#5-move-faces-to-a-chosen-material) |
+| Distinguish materials before Substance Painter | [Preview colors](#6-give-every-material-a-different-preview-color), [dark masks](#7-darken-distractions-without-painting-the-material) |
+| List openings, ignore intentional ones, inspect a patch | [Scan](#9-list-possible-missing-faces-and-openings), [ignore](#91-ignore-openings-you-want-to-keep--new-in-18), [preview repair](#10-preview-a-repair-before-applying-it--new-in-17) |
+| Understand Ctrl+Z or recover the view | [Undo and view recovery](#undo-and-view-recovery), [troubleshooting](#troubleshooting) |
 
 ## Install in a minute
 
@@ -44,6 +58,8 @@ The project name is **FacePilot**. The installed add-on retains the name **Kolay
 4. Select **one mesh**, press **Tab** for Edit Mode, then **N → FacePilot** in the 3D Viewport.
 
 Tested with **Blender 5.2.3 LTS**. The add-on declares Blender 4.2 as its minimum; earlier supported versions have not been validated by this repository's test run. No external Python libraries or service connection are needed.
+
+To update an existing installation, install the latest add-on ZIP through the same menu and restart Blender if the old panel is still loaded. **FacePilot** is the sidebar tab; **Kolay Malzeme TR** is the name to search for in Add-ons.
 
 ## Interface & language · new in 1.9
 
@@ -97,6 +113,16 @@ In **Selection**, choose the source material, choose **Removal target** (default
 ![Remove a one-face material in the English panel](docs/images/27-remove-material-en.png)
 
 Choose a different target when removing slot 1. Empty materials need no target; a final material with faces needs another material first. Shared mesh data is rejected: make it single-user before removal. A successful removal clears pending repair previews and red marks. **Ctrl+Z** restores slots and assignments together; undo/redo returns Blender to Object Mode, so press **Tab** to resume editing. This command uses full Object Mode undo snapshots because mesh Edit Mode undo does not store material slot arrays.
+
+**Example: a long `tripo_…` material has one face left.** Select its row and check **Visible: 1 / 1** below the list. If it says **0 / 1**, use **Show** first. Press **Select → Isolate** to see where that face belongs; **Restore** brings the surrounding faces back. Choose the destination in **Removal target**, then **Remove material**. If the source is the first slot, choose a different target: “Main material (slot 1)” refers to the list position, not a special material name. **Removal target** and **Material assignment → Target** share the same setting; removal resets it to slot 1 afterward.
+
+| Control | What happens to the source faces/material |
+|---|---|
+| **Subtract** in Selection | Deselects visible source faces; assignments and slots stay. |
+| **Move selected source faces** in Material assignment | Transfers selected visible source faces; source slots stay. |
+| **Remove material** in Selection | Transfers every source face, including hidden/unselected faces; removes source slots from this object. |
+
+The original material may still appear in Blender's material picker because its datablock is retained. This button removes its use on the current object; it does not purge materials from the `.blend` file. For shared mesh data, exit Edit Mode and use **Object → Relations → Make Single User → Object & Data**, then return with **Tab**.
 
 ## 2. Pick a region with Smart Selection
 
@@ -258,20 +284,42 @@ New patches inherit the adjacent material and align with neighboring face windin
 
 ## 11. Merge close selected vertices
 
-In **Yalnız seçili noktaları birleştir**, select the intended vertices, set **Birleştirme mesafesi**, leave **Yalnız bağlı geometri** enabled for a conservative start, and click **Seçili noktaları mesafeyle birleştir**.
+In **Gelişmiş onarım (Advanced repair) → Seçili noktaları birleştir**, select the intended vertices, set **Birleştirme mesafesi**, leave **Yalnız bağlı geometri** enabled for a conservative start, and click **Seçili noktaları mesafeyle birleştir**.
 
 Only selected, visible vertices participate. The default threshold is **0.00001 world units**. The connected-only option restricts welding to connected geometry; turn it off deliberately when joining disconnected duplicate points. Under non-uniform scale the local threshold is reduced conservatively, so some close pairs may remain unmerged. **Ctrl+Z** undoes it.
 
 Welding points and filling a missing face solve different problems. A weld does not guarantee a correct face, clean edge flow or good UVs. Inspect the area after each real geometry operation.
+
+## Undo and view recovery
+
+**After Remove material, Ctrl+Z restores the material slots and face assignments and returns to Object Mode.** The FacePilot editing controls then become unavailable. Select the mesh if needed and press **Tab** to return to Edit Mode. **Ctrl+Shift+Z** redoes the removal. A mode change alone is not evidence of deleted geometry; compare the material list and face counts in Edit Mode.
+
+| What you want to reverse | Use |
+|---|---|
+| A material removal, real assignment, transfer, applied patch or weld | **Ctrl+Z**; after material-removal undo, **Tab** resumes editing. |
+| Material-eye hiding | Its **Show** button/closed eye; **Ctrl+Z** can also undo that visibility edit. |
+| FacePilot isolation | **Restore**, preserving faces hidden before isolation. **Reveal all hidden faces** reveals those too. |
+| Individual/all preview colors | **Clear active color / Clear all colors** in Visual preview. |
+| Black mask and preview colors together | **Reset visual previews** in Visual preview. Red marks and isolation stay separate. |
+| All red correction marks | **Clear all red marks**; disable **Ctrl red marking** to stop the gesture. |
+| A violet proposal that has not been applied | **Cancel** in Openings & repair; no geometry was added. |
+
+Preview colors, marks, saved selections, ignored openings and pending proposals are session tools. Do not rely on Ctrl+Z or saving the `.blend` file to preserve/restore that runtime state. In particular, removal clears its red marks and pending proposal even if you subsequently undo the material edit.
 
 ## Troubleshooting
 
 | Symptom | What to check |
 |---|---|
 | Buttons are unavailable | Select one mesh and enter Edit Mode; multi-object editing is unsupported. |
+| The panel became unavailable after removal undo | Blender returned to Object Mode. Select the mesh and press **Tab**. |
+| “Source and target match” while removing | Pick a different **Removal target**; slot 1 cannot transfer to itself. Duplicate slots for the source material also count as the same source. |
+| A material has 0 visible faces | Check **visible / total** below the list. **0 / 1** is one hidden face; **0 / 0** is an unused slot. Use **Show** for hidden faces. |
+| Removed material is still in Blender's picker | The global material datablock is retained; only this object's source slots were removed. |
+| Eye button is unavailable | No faces are assigned to that material; an empty slot has nothing to show/hide. |
 | Ctrl behaves differently | Turn off **Ctrl ile kırmızı işaretle** after marking. |
 | Cannot mark a face red | It must initially be visible and orange-selected. |
 | No eligible repair regions | Read skip reasons; many openings are large, irregular or intentional. Do not increase the size limit blindly. |
+| The scan finds openings but strict mode says 0 eligible | Scan counts all candidate boundaries. Strict repair accepts only suitable 3–4-edge loops; inspect **Openings & repair → Preview repair** for larger/curved loops. |
 | Selection memory / scan / marks disappear | Topology changed, the mesh changed, or the session was reset. Re-scan or reselect. |
 | Color picker did not update the mesh | Click **Bu malzemeye renk ver** again after editing the picker. |
 | Colors are obscured | Clear black previews, exit isolation if needed, and inspect the base mesh. |
